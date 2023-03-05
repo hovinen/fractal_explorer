@@ -219,8 +219,7 @@ pub fn main() {
 
                         {
                             // We clear the frame
-                            let mut render_pass =
-                                fractal_view.clear(&view, &mut encoder, Color::BLACK);
+                            let mut render_pass = fractal_view.clear(&view, &mut encoder);
 
                             // Draw the scene
                             fractal_view.draw(&mut render_pass);
