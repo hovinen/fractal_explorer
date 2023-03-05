@@ -1,9 +1,10 @@
 mod controls;
 mod fractal_view;
 
-use controls::Controls;
-use fractal_view::View;
+use cgmath::Vector2;
+use controls::{CanvasMessage, Controls, Message};
 
+use fractal_view::View;
 use iced::Color;
 use iced_wgpu::{wgpu, Backend, Renderer, Settings, Viewport};
 use iced_winit::{conversion, futures, program, renderer, winit, Clipboard, Debug, Size};
@@ -20,6 +21,8 @@ use wasm_bindgen::JsCast;
 use web_sys::HtmlCanvasElement;
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::WindowBuilderExtWebSys;
+
+const ZOOM_SCROLL_FACTOR: f32 = 40.0;
 
 pub fn main() {
     #[cfg(target_arch = "wasm32")]
@@ -122,7 +125,7 @@ pub fn main() {
     let mut staging_belt = wgpu::util::StagingBelt::new(5 * 1024);
 
     // Initialize scene and GUI controls
-    let fractal_view = View::new(&device, format);
+    let mut fractal_view = View::new(&device, format);
     let controls = Controls::new();
 
     // Initialize iced
@@ -177,6 +180,23 @@ pub fn main() {
                         &mut clipboard,
                         &mut debug,
                     );
+
+                    let program = state.program();
+
+                    match program.take_last_message() {
+                        Some(Message::Canvas(CanvasMessage::Pan(x, y))) => {
+                            let displacement = Vector2::new(
+                                x / physical_size.width as f32,
+                                y / physical_size.height as f32,
+                            );
+                            fractal_view.translate(displacement);
+                        }
+                        Some(Message::Canvas(CanvasMessage::Zoom(y))) => {
+                            let factor = y / ZOOM_SCROLL_FACTOR + 1.0;
+                            fractal_view.zoom(factor);
+                        }
+                        _ => {}
+                    }
 
                     // and request a redraw
                     window.request_redraw();

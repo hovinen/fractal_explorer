@@ -40,6 +40,8 @@ const VERTICES: &[[f32; 2]] = &[[-1.0, -1.0], [1.0, -1.0], [-1.0, 1.0], [1.0, 1.
 
 const INDICES: &[[u16; 3]] = &[[0, 1, 2], [1, 2, 3]];
 
+const ORIGINAL_VIEWPORT_WIDTH: f32 = 4.0;
+
 impl View {
     pub(super) fn new(
         device: &iced_wgpu::wgpu::Device,
@@ -131,11 +133,12 @@ impl View {
     }
 
     pub(super) fn translate(&mut self, displacement: Vector2<f32>) {
-        self.view_transform = self.view_transform * Matrix3::from_translation(displacement);
+        self.view_transform =
+            self.view_transform * Matrix3::from_translation(ORIGINAL_VIEWPORT_WIDTH * displacement);
     }
 
     pub(super) fn zoom(&mut self, factor: f32) {
-        self.view_transform = Matrix3::from_scale(factor) * self.view_transform;
+        self.view_transform = self.view_transform * Matrix3::from_scale(factor);
     }
 }
 

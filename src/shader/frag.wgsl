@@ -25,7 +25,7 @@ fn mandelbrot(in: VertexOutput) -> @location(0) vec4<f32> {
             break;
         }
 
-        i += 0.005;
+        i += 0.001;
     }
 
     if i > 1.0 {
