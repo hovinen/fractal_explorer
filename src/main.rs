@@ -208,6 +208,8 @@ pub fn main() {
 
                 match surface.get_current_texture() {
                     Ok(frame) => {
+                        fractal_view.update_transform(&queue);
+
                         let mut encoder =
                             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                                 label: None,

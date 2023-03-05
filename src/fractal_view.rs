@@ -1,7 +1,7 @@
 use std::num::NonZeroU64;
 
 use bytemuck::{Pod, Zeroable};
-use cgmath::{Matrix, Matrix3, SquareMatrix, Vector2};
+use cgmath::{Matrix, Matrix3, Vector2};
 use iced_wgpu::wgpu::{self, util::DeviceExt};
 
 pub(super) struct View {
@@ -57,10 +57,11 @@ impl View {
         });
         let view_transform =
             Matrix3::from_scale(2.0) * Matrix3::from_translation(Vector2::new(-0.25, 0.0));
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Uniform buffer"),
-            contents: bytemuck::cast_slice::<Uniform, _>(&[view_transform.into()]),
-            usage: wgpu::BufferUsages::UNIFORM,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM,
+            size: std::mem::size_of::<Uniform>() as u64,
+            mapped_at_creation: false,
         });
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Bind group layout"),
@@ -119,6 +120,22 @@ impl View {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         render_pass.draw_indexed(0..6, 0, 0..1);
+    }
+
+    pub(super) fn update_transform(&self, queue: &iced_wgpu::wgpu::Queue) {
+        queue.write_buffer(
+            &self.uniform_buffer,
+            0,
+            bytemuck::cast_slice::<Uniform, _>(&[self.view_transform.into()]),
+        );
+    }
+
+    pub(super) fn translate(&mut self, displacement: Vector2<f32>) {
+        self.view_transform = self.view_transform * Matrix3::from_translation(displacement);
+    }
+
+    pub(super) fn zoom(&mut self, factor: f32) {
+        self.view_transform = Matrix3::from_scale(factor) * self.view_transform;
     }
 }
 
