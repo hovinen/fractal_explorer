@@ -6,7 +6,7 @@ use iced::{
     Element, Length, Rectangle,
 };
 use iced_graphics::widget::{
-    canvas::{event::Status, Cursor, Event, Geometry},
+    canvas::{self, event::Status, Cursor, Event, Geometry},
     Canvas,
 };
 use iced_native::Theme;
@@ -85,7 +85,7 @@ impl FractalCanvas {
     }
 }
 
-impl iced_graphics::widget::canvas::Program<CanvasMessage> for FractalCanvas {
+impl canvas::Program<CanvasMessage> for FractalCanvas {
     type State = Mode;
 
     fn draw(
@@ -147,6 +147,7 @@ impl iced_graphics::widget::canvas::Program<CanvasMessage> for FractalCanvas {
                     }
                 }
                 mouse::Event::WheelScrolled {
+                    // TODO: Zoom in on the location of the cursor rather than just into the centre.
                     delta: ScrollDelta::Pixels { x: _x, y },
                 } => (Status::Captured, Some(CanvasMessage::Zoom(y))),
                 mouse::Event::WheelScrolled {

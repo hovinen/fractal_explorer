@@ -18,7 +18,7 @@ fn mandelbrot(in: VertexOutput) -> @location(0) vec4<f32> {
     while (i <= 1.0) {
         z = vec2(
             z.x * z.x - z.y * z.y + c.x,
-            z.y * z.x + z.x * z.y + c.y
+            2.0 * z.y * z.x + c.y
         );
 
         if (length(z) > 4.0) {
@@ -33,4 +33,13 @@ fn mandelbrot(in: VertexOutput) -> @location(0) vec4<f32> {
     } else {
         return vec4(vec3(i), 1.0);
     }
+}
+
+@group(1) @binding(0) var<storage, read_write> v: vec3<f32>;
+
+@compute
+@workgroup_size(1)
+fn fetch_uniform() {
+    let v_out = u.transform * v;
+    v = v_out;
 }

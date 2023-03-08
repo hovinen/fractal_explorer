@@ -700,12 +700,15 @@ dependencies = [
  "bytemuck",
  "cgmath",
  "env_logger",
+ "futures-intrusive",
+ "googletest",
  "iced",
  "iced_core",
  "iced_graphics",
  "iced_native",
  "iced_wgpu",
  "iced_winit",
+ "pollster",
  "wgpu",
 ]
 
@@ -772,6 +775,17 @@ dependencies = [
  "futures-task",
  "futures-util",
  "num_cpus",
+]
+
+[[package]]
+name = "futures-intrusive"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d930c203dd0b6ff06e0201a4a2fe9149b43c684fd4420555b26d21b1a02956f"
+dependencies = [
+ "futures-core",
+ "lock_api",
+ "parking_lot 0.12.1",
 ]
 
 [[package]]
@@ -905,6 +919,27 @@ dependencies = [
  "ab_glyph",
  "approx 0.5.1",
  "xi-unicode",
+]
+
+[[package]]
+name = "googletest"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4c4407c3f78f32f40f10c6a53ac6c04b519c1d7f1d7f78c5b82da98f17ec804"
+dependencies = [
+ "googletest_macro",
+ "num-traits",
+ "regex",
+]
+
+[[package]]
+name = "googletest_macro"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a035bc807c5ac588f52020440458e08bb54b83bfc9aa9dd2c6b7f628e849bf37"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1759,6 +1794,12 @@ dependencies = [
  "flate2",
  "miniz_oxide",
 ]
+
+[[package]]
+name = "pollster"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22686f4785f02a4fcc856d3b3bb19bf6c8160d103f7a99cc258bddd0251dc7f2"
 
 [[package]]
 name = "ppv-lite86"
