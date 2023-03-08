@@ -245,31 +245,59 @@ mod tests {
                 count: None,
             }
         }
+
+        fn descriptor() -> wgpu::BufferDescriptor<'static> {
+            wgpu::BufferDescriptor {
+                label: None,
+                size: std::mem::size_of::<MappableVector>() as u64,
+                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            }
+        }
     }
 
     #[test]
     fn transform_is_transferred_correctly() -> Result<()> {
         let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
         let (format, device, queue) = create_device(&instance, None, wgpu::Backends::PRIMARY);
-
-        let vec = MappableVector(Vector3::new(1.0, 2.0, 3.0).into());
-
-        let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            size: std::mem::size_of::<MappableVector>() as u64,
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::bytes_of(&vec),
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::COPY_SRC,
-        });
+        let staging_buffer = device.create_buffer(&MappableVector::descriptor());
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: None,
             entries: &[MappableVector::layout_entry()],
+        });
+        let view = View::new(&device, format, &[&bind_group_layout]);
+        view.update_transform(&queue);
+        let vec = MappableVector(Vector3::new(1.0, 2.0, 3.0).into());
+
+        run_compute_shader(
+            &view,
+            &device,
+            &queue,
+            &staging_buffer,
+            &bind_group_layout,
+            vec,
+        );
+
+        verify_that!(
+            fetch_result(&device, staging_buffer),
+            eq(MappableVector([0.5, 4.0, 3.0]))
+        )
+    }
+
+    fn run_compute_shader(
+        view: &View,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        staging_buffer: &wgpu::Buffer,
+        bind_group_layout: &wgpu::BindGroupLayout,
+        input: MappableVector,
+    ) {
+        let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::bytes_of(&input),
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
         });
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
@@ -279,9 +307,6 @@ mod tests {
                 resource: storage_buffer.as_entire_binding(),
             }],
         });
-        let view = View::new(&device, format, &[&bind_group_layout]);
-
-        view.update_transform(&queue);
 
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: None,
@@ -289,6 +314,7 @@ mod tests {
             module: &view.fs_module,
             entry_point: "fetch_uniform",
         });
+
         let mut encoder = device.create_command_encoder(&Default::default());
         {
             let mut compute_pass = encoder.begin_compute_pass(&Default::default());
@@ -305,7 +331,9 @@ mod tests {
             std::mem::size_of::<MappableVector>() as u64,
         );
         queue.submit(Some(encoder.finish()));
+    }
 
+    fn fetch_result(device: &wgpu::Device, staging_buffer: wgpu::Buffer) -> MappableVector {
         let buffer_slice = staging_buffer.slice(..);
         let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
         buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
@@ -315,7 +343,6 @@ mod tests {
         let result = *bytemuck::from_bytes::<MappableVector>(&data);
         drop(data);
         staging_buffer.unmap();
-
-        verify_that!(result, eq(MappableVector([0.5, 4.0, 3.0])))
+        result
     }
 }
