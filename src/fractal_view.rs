@@ -1,11 +1,9 @@
-use std::num::NonZeroU64;
-
+use crate::gpu::Gpu;
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix, Matrix3, Vector2};
 use iced_wgpu::wgpu::{self, util::DeviceExt};
+use std::num::NonZeroU64;
 use wgpu::BindGroupLayout;
-
-use crate::gpu::Gpu;
 
 // Two triangles which form a square [-1,-1] - [1,1]
 const VERTICES: &[[f32; 2]] = &[[-1.0, -1.0], [1.0, -1.0], [-1.0, 1.0], [1.0, 1.0]];
@@ -225,9 +223,8 @@ impl From<Matrix3<f32>> for Uniform {
 
 #[cfg(test)]
 mod tests {
-    use crate::gpu::Gpu;
-
     use super::*;
+    use crate::gpu::Gpu;
     use cgmath::Vector3;
     use googletest::{matchers::eq, verify_that, Result};
     use iced::futures;
@@ -241,7 +238,7 @@ mod tests {
         let view = View::new(&gpu, &[&buffer.bind_group_layout]);
         view.update_transform(&gpu.queue);
 
-        run_compute_shader(&view, &gpu, &buffer);
+        run_compute_shader(&view, &gpu, &buffer, "fetch_uniform");
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
@@ -351,6 +348,7 @@ mod tests {
         view: &View,
         gpu: &Gpu,
         buffer: &TransferrableBuffer<T>,
+        entry_point: &'static str,
     ) {
         let pipeline = gpu
             .device
@@ -358,7 +356,7 @@ mod tests {
                 label: None,
                 layout: Some(&view.pipeline_layout),
                 module: &view.fs_module,
-                entry_point: "fetch_uniform",
+                entry_point,
             });
 
         let mut encoder = gpu.device.create_command_encoder(&Default::default());
