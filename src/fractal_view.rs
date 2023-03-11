@@ -227,7 +227,7 @@ mod tests {
     #[test]
     fn transform_is_transferred_correctly() -> Result<()> {
         let gpu = Gpu::new_without_surface();
-        let input = MappableVector(Vector3::new(1.0, 2.0, 3.0).into());
+        let input = MappableVector(Vector3::new(1.0, 2.0, 1.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
         let view = View::new(&gpu, &[&buffer.bind_group_layout]);
         view.update_transform(&gpu.queue);
@@ -236,7 +236,7 @@ mod tests {
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
-            eq(MappableVector([0.5, 4.0, 3.0]))
+            eq(MappableVector([1.5, 4.0, 1.0]))
         )
     }
 
