@@ -223,16 +223,108 @@ impl From<Matrix3<f32>> for Uniform {
 
 #[cfg(test)]
 mod tests {
+    use crate::gpu::Gpu;
+
     use super::*;
-    use crate::create_device;
     use cgmath::Vector3;
     use googletest::{matchers::eq, verify_that, Result};
+    use std::marker::PhantomData;
+
+    #[test]
+    fn transform_is_transferred_correctly() -> Result<()> {
+        let gpu = Gpu::new_without_surface();
+        let vec = MappableVector(Vector3::new(1.0, 2.0, 3.0).into());
+        let buffer = TransferrableBuffer::new(&gpu.device, &vec);
+        let view = View::new(
+            &gpu.device,
+            gpu.texture_format,
+            &[&buffer.bind_group_layout],
+        );
+        view.update_transform(&gpu.queue);
+
+        run_compute_shader(&view, &gpu, &buffer);
+
+        verify_that!(
+            buffer.fetch_result(&gpu.device),
+            eq(MappableVector([0.5, 4.0, 3.0]))
+        )
+    }
+
+    trait DescribableStruct {
+        fn layout_entry() -> wgpu::BindGroupLayoutEntry;
+
+        fn descriptor() -> wgpu::BufferDescriptor<'static>;
+    }
+
+    struct TransferrableBuffer<T: DescribableStruct + Pod> {
+        staging_buffer: wgpu::Buffer,
+        storage_buffer: wgpu::Buffer,
+        bind_group_layout: wgpu::BindGroupLayout,
+        bind_group: wgpu::BindGroup,
+        phantom: PhantomData<T>,
+    }
+
+    impl<T: DescribableStruct + Pod> TransferrableBuffer<T> {
+        fn new(device: &wgpu::Device, input: &T) -> Self {
+            let staging_buffer = device.create_buffer(&MappableVector::descriptor());
+            let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::bytes_of(input),
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_DST
+                    | wgpu::BufferUsages::COPY_SRC,
+            });
+            let bind_group_layout =
+                device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: None,
+                    entries: &[MappableVector::layout_entry()],
+                });
+            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: None,
+                layout: &bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: storage_buffer.as_entire_binding(),
+                }],
+            });
+            Self {
+                staging_buffer,
+                storage_buffer,
+                bind_group_layout,
+                bind_group,
+                phantom: Default::default(),
+            }
+        }
+
+        fn copy(&self, encoder: &mut wgpu::CommandEncoder) {
+            encoder.copy_buffer_to_buffer(
+                &self.storage_buffer,
+                0,
+                &self.staging_buffer,
+                0,
+                std::mem::size_of::<T>() as u64,
+            );
+        }
+
+        fn fetch_result(&self, device: &wgpu::Device) -> T {
+            let buffer_slice = self.staging_buffer.slice(..);
+            let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+            buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
+            device.poll(wgpu::Maintain::Wait);
+            pollster::block_on(receiver.receive());
+            let data = buffer_slice.get_mapped_range();
+            let result = *bytemuck::from_bytes::<T>(&data);
+            drop(data);
+            self.staging_buffer.unmap();
+            result
+        }
+    }
 
     #[repr(C)]
     #[derive(Clone, Copy, Pod, Zeroable, Debug, PartialEq)]
     struct MappableVector([f32; 3]);
 
-    impl MappableVector {
+    impl DescribableStruct for MappableVector {
         fn layout_entry() -> wgpu::BindGroupLayoutEntry {
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
@@ -256,93 +348,29 @@ mod tests {
         }
     }
 
-    #[test]
-    fn transform_is_transferred_correctly() -> Result<()> {
-        let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
-        let (format, device, queue) = create_device(&instance, None, wgpu::Backends::PRIMARY);
-        let staging_buffer = device.create_buffer(&MappableVector::descriptor());
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[MappableVector::layout_entry()],
-        });
-        let view = View::new(&device, format, &[&bind_group_layout]);
-        view.update_transform(&queue);
-        let vec = MappableVector(Vector3::new(1.0, 2.0, 3.0).into());
-
-        run_compute_shader(
-            &view,
-            &device,
-            &queue,
-            &staging_buffer,
-            &bind_group_layout,
-            vec,
-        );
-
-        verify_that!(
-            fetch_result(&device, staging_buffer),
-            eq(MappableVector([0.5, 4.0, 3.0]))
-        )
-    }
-
-    fn run_compute_shader(
+    fn run_compute_shader<T: DescribableStruct + Pod>(
         view: &View,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        staging_buffer: &wgpu::Buffer,
-        bind_group_layout: &wgpu::BindGroupLayout,
-        input: MappableVector,
+        gpu: &Gpu,
+        buffer: &TransferrableBuffer<T>,
     ) {
-        let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::bytes_of(&input),
-            usage: wgpu::BufferUsages::STORAGE
-                | wgpu::BufferUsages::COPY_DST
-                | wgpu::BufferUsages::COPY_SRC,
-        });
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: None,
-            layout: &bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: storage_buffer.as_entire_binding(),
-            }],
-        });
+        let pipeline = gpu
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: None,
+                layout: Some(&view.pipeline_layout),
+                module: &view.fs_module,
+                entry_point: "fetch_uniform",
+            });
 
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: None,
-            layout: Some(&view.pipeline_layout),
-            module: &view.fs_module,
-            entry_point: "fetch_uniform",
-        });
-
-        let mut encoder = device.create_command_encoder(&Default::default());
+        let mut encoder = gpu.device.create_command_encoder(&Default::default());
         {
             let mut compute_pass = encoder.begin_compute_pass(&Default::default());
             compute_pass.set_bind_group(0, &view.bind_group, &[]);
-            compute_pass.set_bind_group(1, &bind_group, &[]);
+            compute_pass.set_bind_group(1, &buffer.bind_group, &[]);
             compute_pass.set_pipeline(&pipeline);
             compute_pass.dispatch_workgroups(1, 1, 1);
         }
-        encoder.copy_buffer_to_buffer(
-            &storage_buffer,
-            0,
-            &staging_buffer,
-            0,
-            std::mem::size_of::<MappableVector>() as u64,
-        );
-        queue.submit(Some(encoder.finish()));
-    }
-
-    fn fetch_result(device: &wgpu::Device, staging_buffer: wgpu::Buffer) -> MappableVector {
-        let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-        device.poll(wgpu::Maintain::Wait);
-        pollster::block_on(receiver.receive());
-        let data = buffer_slice.get_mapped_range();
-        let result = *bytemuck::from_bytes::<MappableVector>(&data);
-        drop(data);
-        staging_buffer.unmap();
-        result
+        buffer.copy(&mut encoder);
+        gpu.queue.submit(Some(encoder.finish()));
     }
 }

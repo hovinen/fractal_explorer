@@ -1,18 +1,18 @@
 mod controls;
 mod fractal_view;
+mod gpu;
 
 use cgmath::Vector2;
 use controls::{CanvasMessage, Controls, Message};
-
 use fractal_view::View;
+use gpu::Gpu;
 use iced::Color;
 use iced_wgpu::{wgpu, Backend, Renderer, Settings, Viewport};
 use iced_winit::{
-    conversion, futures, program, renderer,
+    conversion, program, renderer,
     winit::{self},
     Clipboard, Debug, Size,
 };
-
 use winit::{
     dpi::PhysicalPosition,
     event::{Event, ModifiersState, WindowEvent},
@@ -64,25 +64,13 @@ pub fn main() {
     let mut modifiers = ModifiersState::default();
     let mut clipboard = Clipboard::connect(&window);
 
-    // Initialize wgpu
-
-    #[cfg(target_arch = "wasm32")]
-    let default_backend = wgpu::Backends::GL;
-    #[cfg(not(target_arch = "wasm32"))]
-    let default_backend = wgpu::Backends::PRIMARY;
-
-    let backend = wgpu::util::backend_bits_from_env().unwrap_or(default_backend);
-
-    let instance = wgpu::Instance::new(backend);
-    let surface = unsafe { instance.create_surface(&window) };
-
-    let (format, device, queue) = create_device(&instance, Some(&surface), backend);
+    let (gpu, surface) = Gpu::new(&window);
 
     surface.configure(
-        &device,
+        &gpu.device,
         &wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format,
+            format: gpu.texture_format,
             width: physical_size.width,
             height: physical_size.height,
             present_mode: wgpu::PresentMode::AutoVsync,
@@ -96,12 +84,16 @@ pub fn main() {
     let mut staging_belt = wgpu::util::StagingBelt::new(5 * 1024);
 
     // Initialize scene and GUI controls
-    let mut fractal_view = View::new(&device, format, &[]);
+    let mut fractal_view = View::new(&gpu.device, gpu.texture_format, &[]);
     let controls = Controls::new();
 
     // Initialize iced
     let mut debug = Debug::new();
-    let mut renderer = Renderer::new(Backend::new(&device, Settings::default(), format));
+    let mut renderer = Renderer::new(Backend::new(
+        &gpu.device,
+        Settings::default(),
+        gpu.texture_format,
+    ));
 
     let mut state =
         program::State::new(controls, viewport.logical_size(), &mut renderer, &mut debug);
@@ -183,9 +175,9 @@ pub fn main() {
                     );
 
                     surface.configure(
-                        &device,
+                        &gpu.device,
                         &wgpu::SurfaceConfiguration {
-                            format,
+                            format: gpu.texture_format,
                             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                             width: size.width,
                             height: size.height,
@@ -199,12 +191,13 @@ pub fn main() {
 
                 match surface.get_current_texture() {
                     Ok(frame) => {
-                        fractal_view.update_transform(&queue);
+                        fractal_view.update_transform(&gpu.queue);
 
                         let mut encoder =
-                            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                                label: None,
-                            });
+                            gpu.device
+                                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                                    label: None,
+                                });
 
                         let view = frame
                             .texture
@@ -221,7 +214,7 @@ pub fn main() {
                         // And then iced on top
                         renderer.with_primitives(|backend, primitive| {
                             backend.present(
-                                &device,
+                                &gpu.device,
                                 &mut staging_belt,
                                 &mut encoder,
                                 &view,
@@ -233,7 +226,7 @@ pub fn main() {
 
                         // Then we submit the work
                         staging_belt.finish();
-                        queue.submit(Some(encoder.finish()));
+                        gpu.queue.submit(Some(encoder.finish()));
                         frame.present();
 
                         // Update the mouse cursor
@@ -258,49 +251,4 @@ pub fn main() {
             _ => {}
         }
     })
-}
-
-fn create_device(
-    instance: &wgpu::Instance,
-    surface: Option<&wgpu::Surface>,
-    backend: wgpu::Backends,
-) -> (wgpu::TextureFormat, wgpu::Device, wgpu::Queue) {
-    let (format, (device, queue)) = futures::executor::block_on(async {
-        let adapter =
-            wgpu::util::initialize_adapter_from_env_or_default(&instance, backend, surface)
-                .await
-                .expect("No suitable GPU adapters found on the system!");
-
-        let adapter_features = adapter.features();
-
-        #[cfg(target_arch = "wasm32")]
-        let needed_limits =
-            wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits());
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let needed_limits = wgpu::Limits::default();
-
-        (
-            surface
-                .map(|s| {
-                    s.get_supported_formats(&adapter)
-                        .first()
-                        .copied()
-                        .expect("Get preferred format")
-                })
-                .unwrap_or(wgpu::TextureFormat::Rgba8Unorm),
-            adapter
-                .request_device(
-                    &wgpu::DeviceDescriptor {
-                        label: None,
-                        features: adapter_features & wgpu::Features::default(),
-                        limits: needed_limits,
-                    },
-                    None,
-                )
-                .await
-                .expect("Request device"),
-        )
-    });
-    (format, device, queue)
 }
