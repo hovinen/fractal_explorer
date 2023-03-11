@@ -44,18 +44,6 @@ pub fn main() {
 
     let (gpu, surface) = Gpu::new(&window);
 
-    surface.configure(
-        &gpu.device,
-        &wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: gpu.texture_format,
-            width: physical_size.width,
-            height: physical_size.height,
-            present_mode: wgpu::PresentMode::AutoVsync,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-        },
-    );
-
     let mut resized = false;
 
     // Initialize staging belt

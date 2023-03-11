@@ -14,6 +14,19 @@ impl Gpu {
         let surface = unsafe { instance.create_surface(&window) };
         let (device, queue, texture_format) =
             Self::create_device(&instance, Some(&surface), backend);
+        let physical_size = window.inner_size();
+        surface.configure(
+            &device,
+            &wgpu::SurfaceConfiguration {
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                format: texture_format,
+                width: physical_size.width,
+                height: physical_size.height,
+                present_mode: wgpu::PresentMode::AutoVsync,
+                alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            },
+        );
+
         (
             Self {
                 texture_format,
