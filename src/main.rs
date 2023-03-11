@@ -159,13 +159,7 @@ pub fn main() {
                             .texture
                             .create_view(&wgpu::TextureViewDescriptor::default());
 
-                        {
-                            // We clear the frame
-                            let mut render_pass = fractal_view.clear(&view, &mut encoder);
-
-                            // Draw the scene
-                            fractal_view.draw(&mut render_pass);
-                        }
+                        fractal_view.render(&view, &mut encoder);
 
                         // And then iced on top
                         renderer.with_primitives(|backend, primitive| {

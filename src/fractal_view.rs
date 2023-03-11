@@ -92,12 +92,8 @@ impl View {
         }
     }
 
-    pub(super) fn clear<'a>(
-        &self,
-        target: &'a wgpu::TextureView,
-        encoder: &'a mut wgpu::CommandEncoder,
-    ) -> wgpu::RenderPass<'a> {
-        encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+    pub(super) fn render(&self, target: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: target,
@@ -108,10 +104,8 @@ impl View {
                 },
             })],
             depth_stencil_attachment: None,
-        })
-    }
+        });
 
-    pub(super) fn draw<'a>(&'a self, render_pass: &mut wgpu::RenderPass<'a>) {
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
