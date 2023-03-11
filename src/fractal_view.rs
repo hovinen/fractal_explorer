@@ -220,7 +220,11 @@ mod tests {
     use super::*;
     use crate::gpu::Gpu;
     use cgmath::Vector3;
-    use googletest::{matchers::eq, verify_that, Result};
+    use googletest::{
+        elements_are,
+        matchers::{eq, gt},
+        matches_pattern, verify_that, Result,
+    };
     use iced::futures;
     use std::marker::PhantomData;
 
@@ -237,6 +241,38 @@ mod tests {
         verify_that!(
             buffer.fetch_result(&gpu.device),
             eq(MappableVector([1.5, 4.0, 1.0]))
+        )
+    }
+
+    #[test]
+    fn mandelbrot_iteration_is_applied_correctly_inside_set() -> Result<()> {
+        let gpu = Gpu::new_without_surface();
+        let input = MappableVector(Vector3::new(-1.0, 0.0, 0.0).into());
+        let buffer = TransferrableBuffer::new(&gpu.device, &input);
+        let view = View::new(&gpu, &[&buffer.bind_group_layout]);
+        view.update_transform(&gpu.queue);
+
+        run_compute_shader(&view, &gpu, &buffer, "run_mandelbrot_iteration");
+
+        verify_that!(
+            buffer.fetch_result(&gpu.device),
+            eq(MappableVector([0.0, 0.0, 0.0]))
+        )
+    }
+
+    #[test]
+    fn mandelbrot_iteration_is_applied_correctly_outside_set() -> Result<()> {
+        let gpu = Gpu::new_without_surface();
+        let input = MappableVector(Vector3::new(1.0, 1.0, 0.0).into());
+        let buffer = TransferrableBuffer::new(&gpu.device, &input);
+        let view = View::new(&gpu, &[&buffer.bind_group_layout]);
+        view.update_transform(&gpu.queue);
+
+        run_compute_shader(&view, &gpu, &buffer, "run_mandelbrot_iteration");
+
+        verify_that!(
+            buffer.fetch_result(&gpu.device),
+            matches_pattern!(MappableVector(elements_are![gt(0.0), eq(0.0), eq(0.0)]))
         )
     }
 
