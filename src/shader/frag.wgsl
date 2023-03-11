@@ -39,7 +39,7 @@ fn mandelbrot(in: VertexOutput) -> @location(0) vec4<f32> {
 
 @compute
 @workgroup_size(1)
-fn fetch_uniform() {
+fn apply_uniform() {
     let v_out = u.transform * v;
     v = v_out;
 }

@@ -232,7 +232,7 @@ mod tests {
         let view = View::new(&gpu, &[&buffer.bind_group_layout]);
         view.update_transform(&gpu.queue);
 
-        run_compute_shader(&view, &gpu, &buffer, "fetch_uniform");
+        run_compute_shader(&view, &gpu, &buffer, "apply_uniform");
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
