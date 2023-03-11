@@ -11,7 +11,7 @@ impl Gpu {
     pub fn new(window: &winit::window::Window) -> (Self, wgpu::Surface) {
         let backend = Self::get_backend();
         let instance = wgpu::Instance::new(backend);
-        let surface = Self::create_surface(&instance, window);
+        let surface = unsafe { instance.create_surface(&window) };
         let (device, queue, texture_format) =
             Self::create_device(&instance, Some(&surface), backend);
         (
@@ -50,7 +50,7 @@ impl Gpu {
         surface: Option<&wgpu::Surface>,
         backends: wgpu::Backends,
     ) -> (wgpu::Device, wgpu::Queue, wgpu::TextureFormat) {
-        let (texture_format, (device, queue)) = futures::executor::block_on(async {
+        let ((device, queue), texture_format) = futures::executor::block_on(async {
             let adapter =
                 wgpu::util::initialize_adapter_from_env_or_default(&instance, backends, surface)
                     .await
@@ -58,22 +58,13 @@ impl Gpu {
 
             let adapter_features = adapter.features();
 
-            #[cfg(target_arch = "wasm32")]
-            let needed_limits =
-                wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits());
-
-            #[cfg(not(target_arch = "wasm32"))]
-            let needed_limits = wgpu::Limits::default();
+            let needed_limits = if cfg!(target_arch = "wasm32") {
+                wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits())
+            } else {
+                wgpu::Limits::default()
+            };
 
             (
-                surface
-                    .map(|s| {
-                        s.get_supported_formats(&adapter)
-                            .first()
-                            .copied()
-                            .expect("Get preferred format")
-                    })
-                    .unwrap_or(wgpu::TextureFormat::Rgba8Unorm),
                 adapter
                     .request_device(
                         &wgpu::DeviceDescriptor {
@@ -85,12 +76,16 @@ impl Gpu {
                     )
                     .await
                     .expect("Request device"),
+                surface
+                    .map(|s| {
+                        s.get_supported_formats(&adapter)
+                            .first()
+                            .copied()
+                            .expect("Get preferred format")
+                    })
+                    .unwrap_or(wgpu::TextureFormat::Rgba8Unorm),
             )
         });
         (device, queue, texture_format)
-    }
-
-    fn create_surface(instance: &wgpu::Instance, window: &winit::window::Window) -> wgpu::Surface {
-        unsafe { instance.create_surface(&window) }
     }
 }

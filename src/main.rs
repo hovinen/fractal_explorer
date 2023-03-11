@@ -84,7 +84,7 @@ pub fn main() {
     let mut staging_belt = wgpu::util::StagingBelt::new(5 * 1024);
 
     // Initialize scene and GUI controls
-    let mut fractal_view = View::new(&gpu.device, gpu.texture_format, &[]);
+    let mut fractal_view = View::new(&gpu, &[]);
     let controls = Controls::new();
 
     // Initialize iced
