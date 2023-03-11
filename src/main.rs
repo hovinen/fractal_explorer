@@ -140,17 +140,7 @@ pub fn main() {
                         window.scale_factor(),
                     );
 
-                    surface.configure(
-                        &gpu.device,
-                        &wgpu::SurfaceConfiguration {
-                            format: gpu.texture_format,
-                            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                            width: size.width,
-                            height: size.height,
-                            present_mode: wgpu::PresentMode::AutoVsync,
-                            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-                        },
-                    );
+                    gpu.configure_surface(&surface, size);
 
                     resized = false;
                 }

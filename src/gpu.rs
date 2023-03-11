@@ -14,27 +14,14 @@ impl Gpu {
         let surface = unsafe { instance.create_surface(&window) };
         let (device, queue, texture_format) =
             Self::create_device(&instance, Some(&surface), backend);
+        let gpu = Self {
+            texture_format,
+            device,
+            queue,
+        };
         let physical_size = window.inner_size();
-        surface.configure(
-            &device,
-            &wgpu::SurfaceConfiguration {
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                format: texture_format,
-                width: physical_size.width,
-                height: physical_size.height,
-                present_mode: wgpu::PresentMode::AutoVsync,
-                alpha_mode: wgpu::CompositeAlphaMode::Auto,
-            },
-        );
-
-        (
-            Self {
-                texture_format,
-                device,
-                queue,
-            },
-            surface,
-        )
+        gpu.configure_surface(&surface, physical_size);
+        (gpu, surface)
     }
 
     #[cfg(test)]
@@ -47,6 +34,20 @@ impl Gpu {
             device,
             queue,
         }
+    }
+
+    pub fn configure_surface(&self, surface: &wgpu::Surface, size: winit::dpi::PhysicalSize<u32>) {
+        surface.configure(
+            &self.device,
+            &wgpu::SurfaceConfiguration {
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                format: self.texture_format,
+                width: size.width,
+                height: size.height,
+                present_mode: wgpu::PresentMode::AutoVsync,
+                alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            },
+        );
     }
 
     fn get_backend() -> wgpu::Backends {
