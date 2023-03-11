@@ -29,31 +29,9 @@ use winit::platform::web::WindowBuilderExtWebSys;
 const ZOOM_SCROLL_FACTOR: f32 = 40.0;
 
 pub fn main() {
-    #[cfg(target_arch = "wasm32")]
-    let canvas_element = {
-        console_log::init_with_level(log::Level::Debug).expect("could not initialize logger");
-        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-
-        web_sys::window()
-            .and_then(|win| win.document())
-            .and_then(|doc| doc.get_element_by_id("iced_canvas"))
-            .and_then(|element| element.dyn_into::<HtmlCanvasElement>().ok())
-            .expect("Canvas with id `iced_canvas` is missing")
-    };
-    #[cfg(not(target_arch = "wasm32"))]
-    env_logger::init();
-
-    // Initialize winit
+    init_logging();
     let event_loop = EventLoop::new();
-
-    #[cfg(target_arch = "wasm32")]
-    let window = winit::window::WindowBuilder::new()
-        .with_canvas(Some(canvas_element))
-        .build(&event_loop)
-        .expect("Failed to build winit window");
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let window = winit::window::Window::new(&event_loop).unwrap();
+    let window = create_window(&event_loop);
 
     let physical_size = window.inner_size();
     let mut viewport = Viewport::with_physical_size(
@@ -251,4 +229,35 @@ pub fn main() {
             _ => {}
         }
     })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn init_logging() {
+    console_log::init_with_level(log::Level::Debug).expect("could not initialize logger");
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn init_logging() {
+    env_logger::init();
+}
+
+#[cfg(target_arch = "wasm32")]
+fn create_window(event_loop: &EventLoop<()>) -> iced_winit::winit::window::Window {
+    let canvas_element = {
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| doc.get_element_by_id("iced_canvas"))
+            .and_then(|element| element.dyn_into::<HtmlCanvasElement>().ok())
+            .expect("Canvas with id `iced_canvas` is missing")
+    };
+    winit::window::WindowBuilder::new()
+        .with_canvas(Some(canvas_element))
+        .build(event_loop)
+        .expect("Failed to build winit window")
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn create_window(event_loop: &EventLoop<()>) -> iced_winit::winit::window::Window {
+    winit::window::Window::new(event_loop).unwrap()
 }
