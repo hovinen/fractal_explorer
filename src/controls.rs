@@ -62,6 +62,12 @@ impl Program for Controls {
     type Message = Message;
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
+        match message {
+            Message::Canvas(_) => {}
+            Message::FractalTypeSelected(selected_type) => {
+                self.current_type = selected_type;
+            }
+        }
         self.last_message.set(Some(message));
         iced::Command::none()
     }

@@ -3,7 +3,6 @@ use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix, Matrix3, Vector2};
 use iced_wgpu::wgpu::{self, util::DeviceExt};
 use std::num::NonZeroU64;
-use wgpu::BindGroupLayout;
 
 // Two triangles which form a square [-1,-1] - [1,1]
 const VERTICES: &[[f32; 2]] = &[[-1.0, -1.0], [1.0, -1.0], [-1.0, 1.0], [1.0, 1.0]];
@@ -24,7 +23,7 @@ pub(super) struct View {
 }
 
 impl View {
-    pub(super) fn new(gpu: &Gpu, extra_bind_group_layouts: &[&BindGroupLayout]) -> Self {
+    pub(super) fn new(gpu: &Gpu, extra_bind_group_layouts: &[&wgpu::BindGroupLayout]) -> Self {
         let vertex_buffer = gpu
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -244,8 +243,8 @@ mod tests {
     use cgmath::Vector3;
     use googletest::{
         elements_are,
-        matchers::{eq, gt},
-        matches_pattern, verify_that, Result,
+        matchers::{approx_eq, eq, gt},
+        matches_pattern, tuple, verify_that, Result,
     };
     use iced::futures;
     use std::marker::PhantomData;
@@ -255,8 +254,7 @@ mod tests {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(1.0, 2.0, 1.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
-        let view = View::new(&gpu, &[&buffer.bind_group_layout]);
-        view.update_transform(&gpu.queue);
+        let view = create_view(&gpu, &buffer);
 
         run_compute_shader(&view, &gpu, &buffer, "apply_uniform");
 
@@ -271,8 +269,7 @@ mod tests {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(-1.0, 0.0, 0.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
-        let view = View::new(&gpu, &[&buffer.bind_group_layout]);
-        view.update_transform(&gpu.queue);
+        let view = create_view(&gpu, &buffer);
 
         run_compute_shader(&view, &gpu, &buffer, "run_mandelbrot_iteration");
 
@@ -287,14 +284,87 @@ mod tests {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(1.0, 1.0, 0.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
-        let view = View::new(&gpu, &[&buffer.bind_group_layout]);
-        view.update_transform(&gpu.queue);
+        let view = create_view(&gpu, &buffer);
 
         run_compute_shader(&view, &gpu, &buffer, "run_mandelbrot_iteration");
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
             matches_pattern!(MappableVector(elements_are![gt(0.0), eq(0.0), eq(0.0)]))
+        )
+    }
+
+    #[test]
+    fn eval_poly_evaluates_correctly_at_root() -> Result<()> {
+        let gpu = Gpu::new_without_surface();
+        let input = MappableVector(Vector3::new(-0.5, 3.0f32.sqrt() / 2.0, 0.0).into());
+        let buffer = TransferrableBuffer::new(&gpu.device, &input);
+        let view = create_view(&gpu, &buffer);
+
+        run_compute_shader(&view, &gpu, &buffer, "run_eval_poly");
+
+        verify_that!(
+            buffer.fetch_result(&gpu.device),
+            matches_pattern!(MappableVector(elements_are![
+                approx_eq(0.0),
+                approx_eq(0.0),
+                eq(0.0)
+            ]))
+        )
+    }
+
+    #[test]
+    fn eval_poly_on_derivative_evaluates_correctly() -> Result<()> {
+        let gpu = Gpu::new_without_surface();
+        let input = MappableVector(Vector3::new(2.0, 0.0, 0.0).into());
+        let buffer = TransferrableBuffer::new(&gpu.device, &input);
+        let view = create_view(&gpu, &buffer);
+
+        run_compute_shader(&view, &gpu, &buffer, "run_eval_poly_df");
+
+        verify_that!(
+            buffer.fetch_result(&gpu.device),
+            matches_pattern!(MappableVector(elements_are![
+                approx_eq(12.0),
+                approx_eq(0.0),
+                eq(0.0)
+            ]))
+        )
+    }
+
+    #[test]
+    fn inv_calculates_correct_inverse() -> Result<()> {
+        let gpu = Gpu::new_without_surface();
+        let input = MappableVector(Vector3::new(-2.0, 1.5, 0.0).into());
+        let buffer = TransferrableBuffer::new(&gpu.device, &input);
+        let view = create_view(&gpu, &buffer);
+
+        run_compute_shader(&view, &gpu, &buffer, "run_inv");
+
+        let inv = buffer.fetch_result(&gpu.device);
+        let inv_times_input = (
+            inv.0[0] * input.0[0] - inv.0[1] * input.0[1],
+            inv.0[0] * input.0[1] + inv.0[1] * input.0[0],
+        );
+        verify_that!(inv_times_input, tuple!(approx_eq(1.0), approx_eq(0.0)))
+    }
+
+    #[test]
+    fn newton_converges_to_root() -> Result<()> {
+        let gpu = Gpu::new_without_surface();
+        let input = MappableVector(Vector3::new(-2.0, 5.0, 0.0).into());
+        let buffer = TransferrableBuffer::new(&gpu.device, &input);
+        let view = create_view(&gpu, &buffer);
+
+        run_compute_shader(&view, &gpu, &buffer, "run_newton");
+
+        verify_that!(
+            buffer.fetch_result(&gpu.device),
+            matches_pattern!(MappableVector(elements_are![
+                approx_eq(-0.5),
+                approx_eq(3.0f32.sqrt() / 2.0),
+                eq(0.0)
+            ]))
         )
     }
 
@@ -394,6 +464,12 @@ mod tests {
                 mapped_at_creation: false,
             }
         }
+    }
+
+    fn create_view(gpu: &Gpu, buffer: &TransferrableBuffer<MappableVector>) -> View {
+        let view = View::new(&gpu, &[&buffer.bind_group_layout]);
+        view.update_transform(&gpu.queue);
+        view
     }
 
     fn run_compute_shader<T: DescribableStruct + Pod>(
