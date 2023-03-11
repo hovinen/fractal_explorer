@@ -124,6 +124,9 @@ pub fn main() {
                             let factor = y / ZOOM_SCROLL_FACTOR + 1.0;
                             fractal_view.zoom(factor);
                         }
+                        Some(Message::FractalTypeSelected(fractal_type)) => {
+                            fractal_view.set_fractal_type(&gpu, fractal_type);
+                        }
                         _ => {}
                     }
 

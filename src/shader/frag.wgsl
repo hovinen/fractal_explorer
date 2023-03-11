@@ -40,6 +40,12 @@ fn mandelbrot(in: VertexOutput) -> @location(0) vec4<f32> {
     return vec4(vec3(mandelbrot_iterations(position)), 1.0);
 }
 
+@fragment
+fn newton(in: VertexOutput) -> @location(0) vec4<f32> {
+    let position = vec3(in.position, 1.0);
+    return vec4(vec3(0.5), 1.0);
+}
+
 @group(1) @binding(0) var<storage, read_write> v: vec3<f32>;
 
 @compute

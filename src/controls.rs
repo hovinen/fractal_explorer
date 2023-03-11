@@ -1,8 +1,8 @@
-use std::cell::Cell;
+use std::{cell::Cell, fmt::Display};
 
 use iced::{
     mouse::{self, Button, ScrollDelta},
-    widget::Row,
+    widget::{pick_list, Row},
     Element, Length, Rectangle,
 };
 use iced_graphics::widget::{
@@ -14,18 +14,40 @@ use iced_winit::Program;
 
 pub(super) struct Controls {
     canvas: FractalCanvas,
+    current_type: FractalType,
     last_message: Cell<Option<Message>>,
 }
 
 #[derive(Debug)]
 pub(super) enum Message {
     Canvas(CanvasMessage),
+    FractalTypeSelected(FractalType),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FractalType {
+    Mandelbrot,
+    Newton,
+}
+
+impl FractalType {
+    const ALL: [FractalType; 2] = [Self::Mandelbrot, Self::Newton];
+}
+
+impl Display for FractalType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FractalType::Mandelbrot => write!(f, "Mandelbrot"),
+            FractalType::Newton => write!(f, "Newton"),
+        }
+    }
 }
 
 impl Controls {
     pub(super) fn new() -> Self {
         Self {
             canvas: FractalCanvas::new(),
+            current_type: FractalType::Mandelbrot,
             last_message: Cell::new(None),
         }
     }
@@ -51,6 +73,11 @@ impl Program for Controls {
                     .view()
                     .map(move |message| Message::Canvas(message)),
             )
+            .push(pick_list(
+                &FractalType::ALL[..],
+                Some(self.current_type),
+                |t| Message::FractalTypeSelected(t),
+            ))
             .into()
     }
 }
@@ -130,10 +157,14 @@ impl canvas::Program<CanvasMessage> for FractalCanvas {
                 }
                 mouse::Event::ButtonPressed(button) => {
                     if button == Button::Left {
-                        *state = Mode::Panning {
-                            start_position: cursor.position().unwrap(),
-                        };
-                        (Status::Captured, None)
+                        if let Some(position) = cursor.position() {
+                            *state = Mode::Panning {
+                                start_position: position,
+                            };
+                            (Status::Captured, None)
+                        } else {
+                            (Status::Ignored, None)
+                        }
                     } else {
                         (Status::Ignored, None)
                     }

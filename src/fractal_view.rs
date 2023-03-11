@@ -1,4 +1,4 @@
-use crate::gpu::Gpu;
+use crate::{controls::FractalType, gpu::Gpu};
 use bytemuck::{Pod, Zeroable};
 use cgmath::{Matrix, Matrix3, Vector2};
 use iced_wgpu::wgpu::{self, util::DeviceExt};
@@ -12,7 +12,6 @@ const INDICES: &[[u16; 3]] = &[[0, 1, 2], [1, 2, 3]];
 const ORIGINAL_VIEWPORT_WIDTH: f32 = 4.0;
 
 pub(super) struct View {
-    texture_format: wgpu::TextureFormat,
     pipeline_layout: wgpu::PipelineLayout,
     fs_module: wgpu::ShaderModule,
     vs_module: wgpu::ShaderModule,
@@ -77,9 +76,14 @@ impl View {
             gpu.device
                 .create_shader_module(wgpu::include_wgsl!("shader/frag.wgsl")),
         );
-        let pipeline = Self::build_pipeline(gpu, &pipeline_layout, &vs_module, &fs_module);
+        let pipeline = Self::build_pipeline(
+            gpu,
+            &pipeline_layout,
+            &vs_module,
+            &fs_module,
+            Self::entry_point_for_fractal_type(FractalType::Mandelbrot),
+        );
         Self {
-            texture_format: gpu.texture_format,
             pipeline_layout,
             fs_module,
             vs_module,
@@ -130,11 +134,22 @@ impl View {
         self.view_transform = self.view_transform * Matrix3::from_scale(factor);
     }
 
+    pub(super) fn set_fractal_type(&mut self, gpu: &Gpu, fractal_type: FractalType) {
+        self.pipeline = Self::build_pipeline(
+            gpu,
+            &self.pipeline_layout,
+            &self.vs_module,
+            &self.fs_module,
+            Self::entry_point_for_fractal_type(fractal_type),
+        );
+    }
+
     fn build_pipeline(
         gpu: &Gpu,
         pipeline_layout: &wgpu::PipelineLayout,
         vs_module: &wgpu::ShaderModule,
         fs_module: &wgpu::ShaderModule,
+        entry_point: &'static str,
     ) -> wgpu::RenderPipeline {
         gpu.device
             .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -151,7 +166,7 @@ impl View {
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: fs_module,
-                    entry_point: "mandelbrot",
+                    entry_point,
                     targets: &[Some(wgpu::ColorTargetState {
                         format: gpu.texture_format,
                         blend: Some(wgpu::BlendState {
@@ -174,6 +189,13 @@ impl View {
                 },
                 multiview: None,
             })
+    }
+
+    fn entry_point_for_fractal_type(fractal_type: FractalType) -> &'static str {
+        match fractal_type {
+            FractalType::Mandelbrot => "mandelbrot",
+            FractalType::Newton => "newton",
+        }
     }
 }
 
