@@ -922,9 +922,9 @@ dependencies = [
 
 [[package]]
 name = "googletest"
-version = "0.3.0"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4c4407c3f78f32f40f10c6a53ac6c04b519c1d7f1d7f78c5b82da98f17ec804"
+checksum = "3a92cf769498845b7b972cfb393d978890b92dcb44a8c0339791a0e9afd632f1"
 dependencies = [
  "googletest_macro",
  "num-traits",
@@ -933,9 +933,9 @@ dependencies = [
 
 [[package]]
 name = "googletest_macro"
-version = "0.3.0"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a035bc807c5ac588f52020440458e08bb54b83bfc9aa9dd2c6b7f628e849bf37"
+checksum = "2df8a54dd210557421f9c8206b3e5e2fe687f227400854812ea52f11ba7a1312"
 dependencies = [
  "quote",
  "syn",

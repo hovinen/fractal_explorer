@@ -129,8 +129,11 @@ impl View {
             self.view_transform * Matrix3::from_translation(ORIGINAL_VIEWPORT_WIDTH * displacement);
     }
 
-    pub(super) fn zoom(&mut self, factor: f32) {
-        self.view_transform = self.view_transform * Matrix3::from_scale(factor);
+    pub(super) fn zoom(&mut self, factor: f32, on_point: Vector2<f32>) {
+        self.view_transform = self.view_transform
+            * Matrix3::from_translation(ORIGINAL_VIEWPORT_WIDTH / 2.0 * on_point)
+            * Matrix3::from_scale(factor)
+            * Matrix3::from_translation(-ORIGINAL_VIEWPORT_WIDTH / 2.0 * on_point);
     }
 
     pub(super) fn set_fractal_type(&mut self, gpu: &Gpu, fractal_type: FractalType) {

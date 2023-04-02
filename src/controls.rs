@@ -3,7 +3,7 @@ use std::{cell::Cell, fmt::Display};
 use iced::{
     mouse::{self, Button, ScrollDelta},
     widget::{pick_list, Row},
-    Element, Length, Rectangle,
+    Element, Length, Point, Rectangle,
 };
 use iced_graphics::widget::{
     canvas::{self, event::Status, Cursor, Event, Geometry},
@@ -93,7 +93,7 @@ struct FractalCanvas {}
 #[derive(Debug)]
 pub(super) enum CanvasMessage {
     Pan(f32, f32),
-    Zoom(f32),
+    Zoom(f32, Point),
 }
 
 #[derive(Default)]
@@ -135,7 +135,7 @@ impl canvas::Program<CanvasMessage> for FractalCanvas {
         &self,
         state: &mut Self::State,
         event: Event,
-        _bounds: Rectangle,
+        bounds: Rectangle,
         cursor: Cursor,
     ) -> (Status, Option<CanvasMessage>) {
         match event {
@@ -186,10 +186,22 @@ impl canvas::Program<CanvasMessage> for FractalCanvas {
                 mouse::Event::WheelScrolled {
                     // TODO: Zoom in on the location of the cursor rather than just into the centre.
                     delta: ScrollDelta::Pixels { x: _x, y },
-                } => (Status::Captured, Some(CanvasMessage::Zoom(y))),
+                } => (
+                    Status::Captured,
+                    Some(CanvasMessage::Zoom(
+                        y,
+                        cursor.position().unwrap_or(bounds.center()),
+                    )),
+                ),
                 mouse::Event::WheelScrolled {
                     delta: ScrollDelta::Lines { x: _x, y },
-                } => (Status::Captured, Some(CanvasMessage::Zoom(y))),
+                } => (
+                    Status::Captured,
+                    Some(CanvasMessage::Zoom(
+                        y,
+                        cursor.position().unwrap_or(bounds.center()),
+                    )),
+                ),
             },
             Event::Touch(_) => (Status::Ignored, None),
             Event::Keyboard(_) => (Status::Ignored, None),
