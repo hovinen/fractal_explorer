@@ -119,6 +119,11 @@ pub fn main() {
                                 y / physical_size.height as f32,
                             );
                             fractal_view.translate(displacement);
+                            state.queue_message(Message::Canvas(
+                                CanvasMessage::UpdateViewTransform(
+                                    fractal_view.get_view_transform(),
+                                ),
+                            ));
                         }
                         Some(Message::Canvas(CanvasMessage::Zoom(y, on_point))) => {
                             let factor = y / ZOOM_SCROLL_FACTOR + 1.0;
@@ -129,6 +134,11 @@ pub fn main() {
                                     -on_point.y / physical_size.height as f32 + 0.5,
                                 ),
                             );
+                            state.queue_message(Message::Canvas(
+                                CanvasMessage::UpdateViewTransform(
+                                    fractal_view.get_view_transform(),
+                                ),
+                            ));
                         }
                         Some(Message::FractalTypeSelected(fractal_type)) => {
                             fractal_view.set_fractal_type(&gpu, fractal_type);

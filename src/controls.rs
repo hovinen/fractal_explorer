@@ -1,3 +1,4 @@
+use cgmath::{Matrix3, Vector2, Vector3};
 use iced::{
     mouse::{self, Button, ScrollDelta},
     widget::{pick_list, Row},
@@ -62,6 +63,9 @@ impl Program for Controls {
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         match message {
+            Message::Canvas(CanvasMessage::UpdateViewTransform(view_transform)) => {
+                self.canvas.view_transform = view_transform;
+            }
             Message::Canvas(_) => {}
             Message::FractalTypeSelected(selected_type) => {
                 self.current_type = selected_type;
@@ -87,32 +91,20 @@ impl Program for Controls {
     }
 }
 
-struct FractalCanvas {}
+struct FractalCanvas {
+    view_transform: Matrix3<f32>,
+}
 
 #[derive(Debug)]
 pub(super) enum CanvasMessage {
     Pan(f32, f32),
     Zoom(f32, Point),
+    UpdateViewTransform(Matrix3<f32>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct State {
     mode: Mode,
-    viewport: Rectangle,
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self {
-            mode: Default::default(),
-            viewport: Rectangle {
-                x: -2.5,
-                y: -2.0,
-                width: 4.0,
-                height: 4.0,
-            },
-        }
-    }
 }
 
 #[derive(Debug, Default)]
@@ -126,7 +118,10 @@ enum Mode {
 
 impl FractalCanvas {
     fn new() -> Self {
-        Self {}
+        Self {
+            view_transform: Matrix3::from_scale(2.0)
+                * Matrix3::from_translation(Vector2::new(-0.25, 0.0)),
+        }
     }
 
     fn view(&self) -> Element<CanvasMessage> {
@@ -142,16 +137,18 @@ impl canvas::Program<CanvasMessage> for FractalCanvas {
 
     fn draw(
         &self,
-        state: &Self::State,
+        _state: &Self::State,
         _theme: &Theme,
         bounds: Rectangle,
         cursor: Cursor,
     ) -> Vec<Geometry> {
         if let Some(cursor_position) = cursor.position() {
-            let transfromed_position = Point::new(
-                cursor_position.x / bounds.width * state.viewport.width + state.viewport.x,
-                cursor_position.y / bounds.height * state.viewport.height + state.viewport.y,
-            );
+            let transfromed_position = self.view_transform
+                * Vector3::new(
+                    cursor_position.x / bounds.width * 2.0 - 1.0,
+                    cursor_position.y / bounds.height * 2.0 - 1.0,
+                    1.0,
+                );
             let mut position_text: Text = format!(
                 "{:.4}+{:.4}i",
                 transfromed_position.x, -transfromed_position.y

@@ -136,6 +136,10 @@ impl View {
             * Matrix3::from_translation(-ORIGINAL_VIEWPORT_WIDTH / 2.0 * on_point);
     }
 
+    pub(super) fn get_view_transform(&self) -> Matrix3<f32> {
+        self.view_transform
+    }
+
     pub(super) fn set_fractal_type(&mut self, gpu: &Gpu, fractal_type: FractalType) {
         self.pipeline = Self::build_pipeline(
             gpu,
