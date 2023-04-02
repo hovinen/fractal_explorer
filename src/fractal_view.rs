@@ -285,7 +285,7 @@ mod tests {
     #[test]
     fn mandelbrot_iteration_is_applied_correctly_outside_set() -> Result<()> {
         let gpu = Gpu::new_without_surface();
-        let input = MappableVector(Vector3::new(1.5, 1.5, 0.0).into());
+        let input = MappableVector(Vector3::new(0.5, 0.6, 0.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
         let view = create_view(&gpu, &buffer);
 

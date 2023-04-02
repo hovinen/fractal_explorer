@@ -221,22 +221,16 @@ impl canvas::Program<CanvasMessage> for FractalCanvas {
                 mouse::Event::WheelScrolled {
                     // TODO: Zoom in on the location of the cursor rather than just into the centre.
                     delta: ScrollDelta::Pixels { x: _x, y },
-                } => (
-                    Status::Captured,
-                    Some(CanvasMessage::Zoom(
-                        y,
-                        cursor.position().unwrap_or(bounds.center()),
-                    )),
-                ),
+                } => {
+                    let on_point = cursor.position().unwrap_or(bounds.center());
+                    (Status::Captured, Some(CanvasMessage::Zoom(y, on_point)))
+                }
                 mouse::Event::WheelScrolled {
                     delta: ScrollDelta::Lines { x: _x, y },
-                } => (
-                    Status::Captured,
-                    Some(CanvasMessage::Zoom(
-                        y,
-                        cursor.position().unwrap_or(bounds.center()),
-                    )),
-                ),
+                } => {
+                    let on_point = cursor.position().unwrap_or(bounds.center());
+                    (Status::Captured, Some(CanvasMessage::Zoom(y, on_point)))
+                }
             },
             Event::Touch(_) => (Status::Ignored, None),
             Event::Keyboard(_) => (Status::Ignored, None),
