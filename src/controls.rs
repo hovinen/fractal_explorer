@@ -1,16 +1,15 @@
-use std::{cell::Cell, fmt::Display};
-
 use iced::{
     mouse::{self, Button, ScrollDelta},
     widget::{pick_list, Row},
-    Element, Length, Point, Rectangle,
+    Color, Element, Length, Point, Rectangle,
 };
 use iced_graphics::widget::{
-    canvas::{self, event::Status, Cursor, Event, Geometry},
+    canvas::{self, event::Status, Cursor, Event, Frame, Geometry, Text},
     Canvas,
 };
 use iced_native::Theme;
 use iced_winit::Program;
+use std::{cell::Cell, fmt::Display};
 
 pub(super) struct Controls {
     canvas: FractalCanvas,
@@ -96,7 +95,27 @@ pub(super) enum CanvasMessage {
     Zoom(f32, Point),
 }
 
-#[derive(Default)]
+#[derive(Debug)]
+struct State {
+    mode: Mode,
+    viewport: Rectangle,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            mode: Default::default(),
+            viewport: Rectangle {
+                x: -2.5,
+                y: -2.0,
+                width: 4.0,
+                height: 4.0,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 enum Mode {
     #[default]
     None,
@@ -119,16 +138,32 @@ impl FractalCanvas {
 }
 
 impl canvas::Program<CanvasMessage> for FractalCanvas {
-    type State = Mode;
+    type State = State;
 
     fn draw(
         &self,
-        _state: &Self::State,
+        state: &Self::State,
         _theme: &Theme,
-        _bounds: Rectangle,
-        _cursor: Cursor,
+        bounds: Rectangle,
+        cursor: Cursor,
     ) -> Vec<Geometry> {
-        vec![]
+        if let Some(cursor_position) = cursor.position() {
+            let transfromed_position = Point::new(
+                cursor_position.x / bounds.width * state.viewport.width + state.viewport.x,
+                cursor_position.y / bounds.height * state.viewport.height + state.viewport.y,
+            );
+            let mut position_text: Text = format!(
+                "{:.4}+{:.4}i",
+                transfromed_position.x, -transfromed_position.y
+            )
+            .into();
+            position_text.color = Color::WHITE;
+            let mut frame = Frame::new(bounds.size());
+            frame.fill_text(position_text);
+            vec![frame.into_geometry()]
+        } else {
+            vec![]
+        }
     }
 
     fn update(
@@ -143,7 +178,7 @@ impl canvas::Program<CanvasMessage> for FractalCanvas {
                 mouse::Event::CursorEntered => (Status::Ignored, None),
                 mouse::Event::CursorLeft => (Status::Ignored, None),
                 mouse::Event::CursorMoved { position } => {
-                    let (result, new_mode) = match state {
+                    let (result, new_mode) = match state.mode {
                         Mode::None => ((Status::Ignored, None), Mode::None),
                         Mode::Panning { start_position } => (
                             (
@@ -158,13 +193,13 @@ impl canvas::Program<CanvasMessage> for FractalCanvas {
                             },
                         ),
                     };
-                    *state = new_mode;
+                    state.mode = new_mode;
                     result
                 }
                 mouse::Event::ButtonPressed(button) => {
                     if button == Button::Left {
                         if let Some(position) = cursor.position() {
-                            *state = Mode::Panning {
+                            state.mode = Mode::Panning {
                                 start_position: position,
                             };
                             (Status::Captured, None)
@@ -177,7 +212,7 @@ impl canvas::Program<CanvasMessage> for FractalCanvas {
                 }
                 mouse::Event::ButtonReleased(button) => {
                     if button == Button::Left {
-                        *state = Mode::None;
+                        state.mode = Mode::None;
                         (Status::Captured, None)
                     } else {
                         (Status::Ignored, None)

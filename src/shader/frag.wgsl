@@ -9,9 +9,7 @@ struct Uniform {
 
 @group(0) @binding(0) var<uniform> u: Uniform;
 
-fn mandelbrot_iterations(position: vec3<f32>) -> f32 {
-    let position = u.transform * position;
-    let c = vec2(position.x, position.y);
+fn mandelbrot_iterations(c: vec2<f32>) -> f32 {
     var z = vec2(0.0, 0.0);
     var z2 = vec2(0.0, 0.0);
     var i = 0.0;
@@ -35,8 +33,8 @@ fn mandelbrot_iterations(position: vec3<f32>) -> f32 {
 
 @fragment
 fn mandelbrot(in: VertexOutput) -> @location(0) vec4<f32> {
-    let position = vec3(in.position, 1.0);
-    return vec4(vec3(mandelbrot_iterations(position)), 1.0);
+    let position = u.transform * vec3(in.position, 1.0);
+    return vec4(vec3(mandelbrot_iterations(vec2(position.x, position.y))), 1.0);
 }
 
 fn mul(a: vec2<f32>, b: vec2<f32>) -> vec2<f32> {
@@ -122,7 +120,7 @@ fn apply_uniform() {
 @compute
 @workgroup_size(1)
 fn run_mandelbrot_iteration() {
-    let i = mandelbrot_iterations(v);
+    let i = mandelbrot_iterations(vec2(v.x, v.y));
     v = vec3(i, 0.0, 0.0);
 }
 
