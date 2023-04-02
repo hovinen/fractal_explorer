@@ -13,14 +13,13 @@ fn mandelbrot_iterations(position: vec3<f32>) -> f32 {
     let position = u.transform * position;
     let c = vec2(position.x, position.y);
     var z = vec2(0.0, 0.0);
+    var z2 = vec2(0.0, 0.0);
     var i = 0.0;
     while (i <= 1.0) {
-        z = vec2(
-            z.x * z.x - z.y * z.y + c.x,
-            2.0 * z.y * z.x + c.y
-        );
+        z = vec2(z2.x - z2.y + c.x, 2.0 * z.x * z.y + c.y);
+        z2 = vec2(z.x * z.x, z.y * z.y);
 
-        if (length(z) > 4.0) {
+        if (z2.x + z2.y > 4.0) {
             break;
         }
 
