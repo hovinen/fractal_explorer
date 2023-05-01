@@ -2,4 +2,4 @@
 
 This is an experiment using [WGPU](https://crates.io/crates/wgpu) to render some fractals and offering simple zooming functionality.
 
-It is intended as a testbed to explore strategies for unit testing WGPU shaders.
+It is intended as a testbed to explore strategies for unit testing WGPU shaders. Example tests may be found in the `fractal_view` module.
