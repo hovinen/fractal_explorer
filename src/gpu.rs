@@ -66,7 +66,7 @@ impl Gpu {
     ) -> (wgpu::Device, wgpu::Queue, wgpu::TextureFormat) {
         let ((device, queue), texture_format) = futures::executor::block_on(async {
             let adapter =
-                wgpu::util::initialize_adapter_from_env_or_default(&instance, backends, surface)
+                wgpu::util::initialize_adapter_from_env_or_default(instance, backends, surface)
                     .await
                     .expect("No suitable GPU adapters found on the system!");
 

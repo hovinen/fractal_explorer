@@ -160,7 +160,7 @@ impl View {
         gpu.device
             .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: None,
-                layout: Some(&pipeline_layout),
+                layout: Some(pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: vs_module,
                     entry_point: "main",

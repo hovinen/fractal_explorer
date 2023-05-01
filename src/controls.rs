@@ -77,15 +77,11 @@ impl Program for Controls {
 
     fn view(&self) -> iced_winit::Element<'_, Self::Message, Self::Renderer> {
         Row::new()
-            .push(
-                self.canvas
-                    .view()
-                    .map(move |message| Message::Canvas(message)),
-            )
+            .push(self.canvas.view().map(Message::Canvas))
             .push(pick_list(
                 &FractalType::ALL[..],
                 Some(self.current_type),
-                |t| Message::FractalTypeSelected(t),
+                Message::FractalTypeSelected,
             ))
             .into()
     }
