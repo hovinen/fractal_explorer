@@ -55,9 +55,9 @@ fn eval_poly(z: vec2<f32>, coeffs: vec4<f32>) -> vec2<f32> {
     return f_z + vec2(coeffs[3], 0.0);
 }
 
-let ITERATIONS = 100;
-let COEFFS = vec4<f32>(1.0, 0.0, 0.0, -1.0);
-let DERIVATIVE_COEFFS = vec4<f32>(0.0, 3.0, 0.0, 0.0);
+const ITERATIONS = 100;
+const COEFFS = vec4<f32>(1.0, 0.0, 0.0, -1.0);
+const DERIVATIVE_COEFFS = vec4<f32>(0.0, 3.0, 0.0, 0.0);
 
 fn newton_iterate(position: vec3<f32>) -> vec2<f32> {
     var z = vec2(position.x, position.y);
@@ -76,13 +76,13 @@ fn distance_sq(a: vec2<f32>, b: vec2<f32>) -> f32 {
     return d.x * d.x + d.y * d.y;
 }
 
-let EPSILON = 1e-4;
-let ROOTS = array<vec2<f32>, 3>(
+const EPSILON = 1e-4;
+const ROOTS = array<vec2<f32>, 3>(
     vec2<f32>(1.0, 0.0),
     vec2<f32>(-0.5, 0.866025),
     vec2<f32>(-0.5, -0.866025),
 );
-let COLOURS = array<vec3<f32>, 3>(
+const COLOURS = array<vec3<f32>, 3>(
     vec3<f32>(1.0, 0.0, 0.0),
     vec3<f32>(0.0, 1.0, 0.0),
     vec3<f32>(0.0, 0.0, 1.0),
