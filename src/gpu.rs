@@ -10,8 +10,11 @@ pub struct Gpu {
 impl Gpu {
     pub fn new(window: &winit::window::Window) -> (Self, wgpu::Surface) {
         let backend = Self::get_backend();
-        let instance = wgpu::Instance::new(backend);
-        let surface = unsafe { instance.create_surface(&window) };
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: backend,
+            ..Default::default()
+        });
+        let surface = unsafe { instance.create_surface(&window).unwrap() };
         let (device, queue, texture_format) =
             Self::create_device(&instance, Some(&surface), backend);
         let gpu = Self {
@@ -27,7 +30,10 @@ impl Gpu {
     #[cfg(test)]
     pub fn new_without_surface() -> Self {
         let backend = Self::get_backend();
-        let instance = wgpu::Instance::new(backend);
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: backend,
+            ..Default::default()
+        });
         let (device, queue, texture_format) = Self::create_device(&instance, None, backend);
         Self {
             texture_format,
@@ -46,6 +52,7 @@ impl Gpu {
                 height: size.height,
                 present_mode: wgpu::PresentMode::AutoVsync,
                 alpha_mode: wgpu::CompositeAlphaMode::Auto,
+                view_formats: vec![],
             },
         );
     }
@@ -92,7 +99,8 @@ impl Gpu {
                     .expect("Request device"),
                 surface
                     .map(|s| {
-                        s.get_supported_formats(&adapter)
+                        s.get_capabilities(&adapter)
+                            .formats
                             .first()
                             .copied()
                             .expect("Get preferred format")
