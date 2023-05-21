@@ -256,14 +256,39 @@ mod tests {
     use iced::futures;
     use std::marker::PhantomData;
 
+    macro_rules! wgsl_shader_test {
+        ($shader_file:expr, $($shader_content:tt)*) => {
+            wgpu::ShaderModuleDescriptor {
+                label: Some(concat!($shader_file, " (test)")),
+                source: wgpu::ShaderSource::Wgsl(concat!(
+                    include_str!($shader_file),
+                    $($shader_content)*
+                ).into()),
+            }
+        };
+    }
+
     #[test]
     fn transform_is_transferred_correctly() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(1.0, 2.0, 1.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
         let view = create_view(&gpu, &buffer);
+        let test_shader = wgsl_shader_test!(
+            "shader/frag.wgsl",
+            "
+                @group(1) @binding(0) var<storage, read_write> v: vec3<f32>;
 
-        run_compute_shader(&view, &gpu, &buffer, "apply_uniform");
+                @compute
+                @workgroup_size(1)
+                fn apply_uniform() {
+                    let v_out = u.transform * v;
+                    v = v_out;
+                }
+            "
+        );
+
+        run_compute_shader(&view, &gpu, &buffer, test_shader, "apply_uniform");
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
@@ -277,8 +302,27 @@ mod tests {
         let input = MappableVector(Vector3::new(-0.5, 0.5, 0.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
         let view = create_view(&gpu, &buffer);
+        let test_shader = wgsl_shader_test!(
+            "shader/frag.wgsl",
+            "
+                @group(1) @binding(0) var<storage, read_write> v: vec3<f32>;
 
-        run_compute_shader(&view, &gpu, &buffer, "run_mandelbrot_iteration");
+                @compute
+                @workgroup_size(1)
+                fn run_mandelbrot_iteration() {
+                    let i = mandelbrot_iterations(vec2(v.x, v.y));
+                    v = vec3(i, 0.0, 0.0);
+                }
+            "
+        );
+
+        run_compute_shader(
+            &view,
+            &gpu,
+            &buffer,
+            test_shader,
+            "run_mandelbrot_iteration",
+        );
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
@@ -292,8 +336,27 @@ mod tests {
         let input = MappableVector(Vector3::new(0.5, 0.6, 0.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
         let view = create_view(&gpu, &buffer);
+        let test_shader = wgsl_shader_test!(
+            "shader/frag.wgsl",
+            "
+                @group(1) @binding(0) var<storage, read_write> v: vec3<f32>;
 
-        run_compute_shader(&view, &gpu, &buffer, "run_mandelbrot_iteration");
+                @compute
+                @workgroup_size(1)
+                fn run_mandelbrot_iteration() {
+                    let i = mandelbrot_iterations(vec2(v.x, v.y));
+                    v = vec3(i, 0.0, 0.0);
+                }
+            "
+        );
+
+        run_compute_shader(
+            &view,
+            &gpu,
+            &buffer,
+            test_shader,
+            "run_mandelbrot_iteration",
+        );
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
@@ -307,8 +370,21 @@ mod tests {
         let input = MappableVector(Vector3::new(-0.5, 3.0f32.sqrt() / 2.0, 0.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
         let view = create_view(&gpu, &buffer);
+        let test_shader = wgsl_shader_test!(
+            "shader/frag.wgsl",
+            "
+                @group(1) @binding(0) var<storage, read_write> v: vec3<f32>;
 
-        run_compute_shader(&view, &gpu, &buffer, "run_eval_poly");
+                @compute
+                @workgroup_size(1)
+                fn run_eval_poly() {
+                    let result = eval_poly(vec2(v.x, v.y), COEFFS);
+                    v = vec3(result, 0.0);
+                }
+            "
+        );
+
+        run_compute_shader(&view, &gpu, &buffer, test_shader, "run_eval_poly");
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
@@ -326,8 +402,21 @@ mod tests {
         let input = MappableVector(Vector3::new(2.0, 0.0, 0.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
         let view = create_view(&gpu, &buffer);
+        let test_shader = wgsl_shader_test!(
+            "shader/frag.wgsl",
+            "
+                @group(1) @binding(0) var<storage, read_write> v: vec3<f32>;
 
-        run_compute_shader(&view, &gpu, &buffer, "run_eval_poly_df");
+                @compute
+                @workgroup_size(1)
+                fn run_eval_poly_df() {
+                    let result = eval_poly(vec2(v.x, v.y), DERIVATIVE_COEFFS);
+                    v = vec3(result, 0.0);
+                }
+            "
+        );
+
+        run_compute_shader(&view, &gpu, &buffer, test_shader, "run_eval_poly_df");
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
@@ -345,8 +434,21 @@ mod tests {
         let input = MappableVector(Vector3::new(-2.0, 1.5, 0.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
         let view = create_view(&gpu, &buffer);
+        let test_shader = wgsl_shader_test!(
+            "shader/frag.wgsl",
+            "
+                @group(1) @binding(0) var<storage, read_write> v: vec3<f32>;
 
-        run_compute_shader(&view, &gpu, &buffer, "run_inv");
+                @compute
+                @workgroup_size(1)
+                fn run_inv() {
+                    let result = inv(vec2(v.x, v.y));
+                    v = vec3(result, 0.0);
+                }
+            "
+        );
+
+        run_compute_shader(&view, &gpu, &buffer, test_shader, "run_inv");
 
         let inv = buffer.fetch_result(&gpu.device);
         let inv_times_input = (
@@ -362,8 +464,21 @@ mod tests {
         let input = MappableVector(Vector3::new(-2.0, 5.0, 0.0).into());
         let buffer = TransferrableBuffer::new(&gpu.device, &input);
         let view = create_view(&gpu, &buffer);
+        let test_shader = wgsl_shader_test!(
+            "shader/frag.wgsl",
+            "
+                @group(1) @binding(0) var<storage, read_write> v: vec3<f32>;
 
-        run_compute_shader(&view, &gpu, &buffer, "run_newton");
+                @compute
+                @workgroup_size(1)
+                fn run_newton() {
+                    let result = newton_iterate(v);
+                    v = vec3(result, 0.0);
+                }
+            "
+        );
+
+        run_compute_shader(&view, &gpu, &buffer, test_shader, "run_newton");
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
@@ -483,14 +598,16 @@ mod tests {
         view: &View,
         gpu: &Gpu,
         buffer: &TransferrableBuffer<T>,
+        shader_test_descriptor: wgpu::ShaderModuleDescriptor,
         entry_point: &'static str,
     ) {
+        let module = gpu.device.create_shader_module(shader_test_descriptor);
         let pipeline = gpu
             .device
             .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                 label: None,
                 layout: Some(&view.pipeline_layout),
-                module: &view.fs_module,
+                module: &module,
                 entry_point,
             });
 
