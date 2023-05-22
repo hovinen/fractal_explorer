@@ -1,6 +1,9 @@
 mod controls;
 mod fractal_view;
 mod gpu;
+#[cfg(test)]
+#[macro_use]
+mod wgpu_test;
 
 use cgmath::Vector2;
 use controls::{CanvasMessage, Controls, Message};
