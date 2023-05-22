@@ -88,19 +88,6 @@ impl<'a, T: DescribableStruct + Pod> GpuTestHarness<'a, T> {
         }
     }
 
-    pub async fn fetch_result(&self, device: &wgpu::Device) -> T {
-        let buffer_slice = self.staging_buffer.slice(..);
-        let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
-        buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-        device.poll(wgpu::Maintain::Wait);
-        receiver.receive().await;
-        let data = buffer_slice.get_mapped_range();
-        let result = *bytemuck::from_bytes::<T>(&data);
-        drop(data);
-        self.staging_buffer.unmap();
-        result
-    }
-
     pub fn run_compute_shader(
         &self,
         pipeline_layout: &wgpu::PipelineLayout,
@@ -138,5 +125,18 @@ impl<'a, T: DescribableStruct + Pod> GpuTestHarness<'a, T> {
             0,
             std::mem::size_of::<T>() as u64,
         );
+    }
+
+    pub async fn fetch_result(&self, device: &wgpu::Device) -> T {
+        let buffer_slice = self.staging_buffer.slice(..);
+        let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+        buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
+        device.poll(wgpu::Maintain::Wait);
+        receiver.receive().await;
+        let data = buffer_slice.get_mapped_range();
+        let result = *bytemuck::from_bytes::<T>(&data);
+        drop(data);
+        self.staging_buffer.unmap();
+        result
     }
 }
