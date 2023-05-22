@@ -3,8 +3,6 @@ use iced_native::futures;
 use std::marker::PhantomData;
 use wgpu::util::DeviceExt;
 
-use crate::fractal_view::View;
-
 #[macro_export]
 macro_rules! wgsl_shader_test {
     ($shader_file:expr, $($shader_content:tt)*) => {
@@ -88,17 +86,18 @@ impl<T: DescribableStruct + Pod> TransferrableBuffer<T> {
 }
 
 pub(crate) fn run_compute_shader<T: DescribableStruct + Pod>(
-    view: &View,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     buffer: &TransferrableBuffer<T>,
+    pipeline_layout: &wgpu::PipelineLayout,
+    bind_group: &wgpu::BindGroup,
     shader_test_descriptor: wgpu::ShaderModuleDescriptor,
     entry_point: &'static str,
 ) {
     let module = device.create_shader_module(shader_test_descriptor);
     let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
         label: None,
-        layout: Some(&view.pipeline_layout),
+        layout: Some(&pipeline_layout),
         module: &module,
         entry_point,
     });
@@ -106,7 +105,7 @@ pub(crate) fn run_compute_shader<T: DescribableStruct + Pod>(
     let mut encoder = device.create_command_encoder(&Default::default());
     {
         let mut compute_pass = encoder.begin_compute_pass(&Default::default());
-        compute_pass.set_bind_group(0, &view.bind_group, &[]);
+        compute_pass.set_bind_group(0, &bind_group, &[]);
         compute_pass.set_bind_group(1, &buffer.bind_group, &[]);
         compute_pass.set_pipeline(&pipeline);
         compute_pass.dispatch_workgroups(1, 1, 1);

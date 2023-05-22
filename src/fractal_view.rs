@@ -11,13 +11,13 @@ const INDICES: &[[u16; 3]] = &[[0, 1, 2], [1, 2, 3]];
 const ORIGINAL_VIEWPORT_WIDTH: f32 = 4.0;
 
 pub(super) struct View {
-    pub pipeline_layout: wgpu::PipelineLayout,
+    pipeline_layout: wgpu::PipelineLayout,
     fs_module: wgpu::ShaderModule,
     vs_module: wgpu::ShaderModule,
     pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
-    pub bind_group: wgpu::BindGroup,
+    bind_group: wgpu::BindGroup,
     uniform_buffer: wgpu::Buffer,
     view_transform: Matrix3<f32>,
 }
@@ -275,10 +275,11 @@ mod tests {
         );
 
         run_compute_shader(
-            &view,
             &gpu.device,
             &gpu.queue,
             &buffer,
+            &view.pipeline_layout,
+            &view.bind_group,
             test_shader,
             "apply_uniform",
         );
@@ -310,10 +311,11 @@ mod tests {
         );
 
         run_compute_shader(
-            &view,
             &gpu.device,
             &gpu.queue,
             &buffer,
+            &view.pipeline_layout,
+            &view.bind_group,
             test_shader,
             "run_mandelbrot_iteration",
         );
@@ -345,10 +347,11 @@ mod tests {
         );
 
         run_compute_shader(
-            &view,
             &gpu.device,
             &gpu.queue,
             &buffer,
+            &view.pipeline_layout,
+            &view.bind_group,
             test_shader,
             "run_mandelbrot_iteration",
         );
@@ -380,10 +383,11 @@ mod tests {
         );
 
         run_compute_shader(
-            &view,
             &gpu.device,
             &gpu.queue,
             &buffer,
+            &view.pipeline_layout,
+            &view.bind_group,
             test_shader,
             "run_eval_poly",
         );
@@ -419,10 +423,11 @@ mod tests {
         );
 
         run_compute_shader(
-            &view,
             &gpu.device,
             &gpu.queue,
             &buffer,
+            &view.pipeline_layout,
+            &view.bind_group,
             test_shader,
             "run_eval_poly_df",
         );
@@ -458,10 +463,11 @@ mod tests {
         );
 
         run_compute_shader(
-            &view,
             &gpu.device,
             &gpu.queue,
             &buffer,
+            &view.pipeline_layout,
+            &view.bind_group,
             test_shader,
             "run_inv",
         );
@@ -495,10 +501,11 @@ mod tests {
         );
 
         run_compute_shader(
-            &view,
             &gpu.device,
             &gpu.queue,
             &buffer,
+            &view.pipeline_layout,
+            &view.bind_group,
             test_shader,
             "run_newton",
         );
