@@ -22,7 +22,9 @@ pub trait DescribableStruct {
     fn descriptor() -> wgpu::BufferDescriptor<'static>;
 }
 
-pub struct TransferrableBuffer<T: DescribableStruct + Pod> {
+pub struct GpuTestHarness<'a, T: DescribableStruct + Pod> {
+    device: &'a wgpu::Device,
+    queue: &'a wgpu::Queue,
     staging_buffer: wgpu::Buffer,
     storage_buffer: wgpu::Buffer,
     pub bind_group_layout: wgpu::BindGroupLayout,
@@ -30,8 +32,8 @@ pub struct TransferrableBuffer<T: DescribableStruct + Pod> {
     phantom: PhantomData<T>,
 }
 
-impl<T: DescribableStruct + Pod> TransferrableBuffer<T> {
-    pub fn new(device: &wgpu::Device, input: &T) -> Self {
+impl<'a, T: DescribableStruct + Pod> GpuTestHarness<'a, T> {
+    pub fn new(device: &'a wgpu::Device, queue: &'a wgpu::Queue, input: &T) -> Self {
         let staging_buffer = device.create_buffer(&T::descriptor());
         let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
@@ -53,22 +55,14 @@ impl<T: DescribableStruct + Pod> TransferrableBuffer<T> {
             }],
         });
         Self {
+            device,
+            queue,
             staging_buffer,
             storage_buffer,
             bind_group_layout,
             bind_group,
             phantom: Default::default(),
         }
-    }
-
-    fn copy(&self, encoder: &mut wgpu::CommandEncoder) {
-        encoder.copy_buffer_to_buffer(
-            &self.storage_buffer,
-            0,
-            &self.staging_buffer,
-            0,
-            std::mem::size_of::<T>() as u64,
-        );
     }
 
     pub fn fetch_result(&self, device: &wgpu::Device) -> T {
@@ -83,33 +77,43 @@ impl<T: DescribableStruct + Pod> TransferrableBuffer<T> {
         self.staging_buffer.unmap();
         result
     }
-}
 
-pub(crate) fn run_compute_shader<T: DescribableStruct + Pod>(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    buffer: &TransferrableBuffer<T>,
-    pipeline_layout: &wgpu::PipelineLayout,
-    bind_group: &wgpu::BindGroup,
-    shader_test_descriptor: wgpu::ShaderModuleDescriptor,
-    entry_point: &'static str,
-) {
-    let module = device.create_shader_module(shader_test_descriptor);
-    let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: None,
-        layout: Some(&pipeline_layout),
-        module: &module,
-        entry_point,
-    });
+    pub fn run_compute_shader(
+        &self,
+        pipeline_layout: &wgpu::PipelineLayout,
+        bind_group: &wgpu::BindGroup,
+        shader_test_descriptor: wgpu::ShaderModuleDescriptor,
+        entry_point: &'static str,
+    ) {
+        let module = self.device.create_shader_module(shader_test_descriptor);
+        let pipeline = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: None,
+                layout: Some(&pipeline_layout),
+                module: &module,
+                entry_point,
+            });
 
-    let mut encoder = device.create_command_encoder(&Default::default());
-    {
-        let mut compute_pass = encoder.begin_compute_pass(&Default::default());
-        compute_pass.set_bind_group(0, &bind_group, &[]);
-        compute_pass.set_bind_group(1, &buffer.bind_group, &[]);
-        compute_pass.set_pipeline(&pipeline);
-        compute_pass.dispatch_workgroups(1, 1, 1);
+        let mut encoder = self.device.create_command_encoder(&Default::default());
+        {
+            let mut compute_pass = encoder.begin_compute_pass(&Default::default());
+            compute_pass.set_bind_group(0, &bind_group, &[]);
+            compute_pass.set_bind_group(1, &self.bind_group, &[]);
+            compute_pass.set_pipeline(&pipeline);
+            compute_pass.dispatch_workgroups(1, 1, 1);
+        }
+        self.copy(&mut encoder);
+        self.queue.submit(Some(encoder.finish()));
     }
-    buffer.copy(&mut encoder);
-    queue.submit(Some(encoder.finish()));
+
+    fn copy(&self, encoder: &mut wgpu::CommandEncoder) {
+        encoder.copy_buffer_to_buffer(
+            &self.storage_buffer,
+            0,
+            &self.staging_buffer,
+            0,
+            std::mem::size_of::<T>() as u64,
+        );
+    }
 }
