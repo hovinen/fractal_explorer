@@ -19,7 +19,17 @@ macro_rules! wgsl_shader_test {
 pub trait DescribableStruct {
     fn layout_entry() -> wgpu::BindGroupLayoutEntry;
 
-    fn descriptor() -> wgpu::BufferDescriptor<'static>;
+    fn descriptor() -> wgpu::BufferDescriptor<'static>
+    where
+        Self: Sized,
+    {
+        wgpu::BufferDescriptor {
+            label: None,
+            size: std::mem::size_of::<Self>() as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        }
+    }
 }
 
 pub struct GpuTestHarness<'a, T: DescribableStruct + Pod> {

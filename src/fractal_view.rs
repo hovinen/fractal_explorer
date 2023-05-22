@@ -522,14 +522,5 @@ mod tests {
                 count: None,
             }
         }
-
-        fn descriptor() -> wgpu::BufferDescriptor<'static> {
-            wgpu::BufferDescriptor {
-                label: None,
-                size: std::mem::size_of::<MappableVector>() as u64,
-                usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            }
-        }
     }
 }
