@@ -274,7 +274,14 @@ mod tests {
             "
         );
 
-        run_compute_shader(&view, &gpu, &buffer, test_shader, "apply_uniform");
+        run_compute_shader(
+            &view,
+            &gpu.device,
+            &gpu.queue,
+            &buffer,
+            test_shader,
+            "apply_uniform",
+        );
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
@@ -304,7 +311,8 @@ mod tests {
 
         run_compute_shader(
             &view,
-            &gpu,
+            &gpu.device,
+            &gpu.queue,
             &buffer,
             test_shader,
             "run_mandelbrot_iteration",
@@ -338,7 +346,8 @@ mod tests {
 
         run_compute_shader(
             &view,
-            &gpu,
+            &gpu.device,
+            &gpu.queue,
             &buffer,
             test_shader,
             "run_mandelbrot_iteration",
@@ -370,7 +379,14 @@ mod tests {
             "
         );
 
-        run_compute_shader(&view, &gpu, &buffer, test_shader, "run_eval_poly");
+        run_compute_shader(
+            &view,
+            &gpu.device,
+            &gpu.queue,
+            &buffer,
+            test_shader,
+            "run_eval_poly",
+        );
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
@@ -402,7 +418,14 @@ mod tests {
             "
         );
 
-        run_compute_shader(&view, &gpu, &buffer, test_shader, "run_eval_poly_df");
+        run_compute_shader(
+            &view,
+            &gpu.device,
+            &gpu.queue,
+            &buffer,
+            test_shader,
+            "run_eval_poly_df",
+        );
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
@@ -434,7 +457,14 @@ mod tests {
             "
         );
 
-        run_compute_shader(&view, &gpu, &buffer, test_shader, "run_inv");
+        run_compute_shader(
+            &view,
+            &gpu.device,
+            &gpu.queue,
+            &buffer,
+            test_shader,
+            "run_inv",
+        );
 
         let inv = buffer.fetch_result(&gpu.device);
         let inv_times_input = (
@@ -464,7 +494,14 @@ mod tests {
             "
         );
 
-        run_compute_shader(&view, &gpu, &buffer, test_shader, "run_newton");
+        run_compute_shader(
+            &view,
+            &gpu.device,
+            &gpu.queue,
+            &buffer,
+            test_shader,
+            "run_newton",
+        );
 
         verify_that!(
             buffer.fetch_result(&gpu.device),
