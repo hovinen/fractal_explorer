@@ -509,18 +509,5 @@ mod tests {
     #[derive(Clone, Copy, Pod, Zeroable, Debug, PartialEq)]
     struct MappableVector([f32; 3]);
 
-    impl DescribableStruct for MappableVector {
-        fn layout_entry() -> wgpu::BindGroupLayoutEntry {
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::COMPUTE,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Storage { read_only: false },
-                    has_dynamic_offset: false,
-                    min_binding_size: NonZeroU64::new(std::mem::size_of::<Self>() as u64),
-                },
-                count: None,
-            }
-        }
-    }
+    impl DescribableStruct for MappableVector {}
 }

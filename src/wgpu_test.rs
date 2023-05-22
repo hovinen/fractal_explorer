@@ -1,6 +1,6 @@
 use bytemuck::Pod;
 use iced_native::futures;
-use std::marker::PhantomData;
+use std::{marker::PhantomData, num::NonZeroU64};
 use wgpu::util::DeviceExt;
 
 #[macro_export]
@@ -17,7 +17,21 @@ macro_rules! wgsl_shader_test {
 }
 
 pub trait DescribableStruct {
-    fn layout_entry() -> wgpu::BindGroupLayoutEntry;
+    fn layout_entry() -> wgpu::BindGroupLayoutEntry
+    where
+        Self: Sized,
+    {
+        wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::COMPUTE,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Storage { read_only: false },
+                has_dynamic_offset: false,
+                min_binding_size: NonZeroU64::new(std::mem::size_of::<Self>() as u64),
+            },
+            count: None,
+        }
+    }
 
     fn descriptor() -> wgpu::BufferDescriptor<'static>
     where
