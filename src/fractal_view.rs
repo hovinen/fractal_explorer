@@ -254,8 +254,8 @@ mod tests {
     use cgmath::Vector3;
     use googletest::prelude::*;
 
-    #[test]
-    fn transform_is_transferred_correctly() -> Result<()> {
+    #[async_std::test]
+    async fn transform_is_transferred_correctly() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(1.0, 2.0, 1.0).into());
         let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
@@ -282,13 +282,13 @@ mod tests {
         );
 
         verify_that!(
-            harness.fetch_result(&gpu.device),
+            harness.fetch_result(&gpu.device).await,
             eq(MappableVector([1.5, 4.0, 1.0]))
         )
     }
 
-    #[test]
-    fn mandelbrot_iteration_is_applied_correctly_inside_set() -> Result<()> {
+    #[async_std::test]
+    async fn mandelbrot_iteration_is_applied_correctly_inside_set() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(-0.5, 0.5, 0.0).into());
         let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
@@ -315,13 +315,13 @@ mod tests {
         );
 
         verify_that!(
-            harness.fetch_result(&gpu.device),
+            harness.fetch_result(&gpu.device).await,
             eq(MappableVector([0.0, 0.0, 0.0]))
         )
     }
 
-    #[test]
-    fn mandelbrot_iteration_is_applied_correctly_outside_set() -> Result<()> {
+    #[async_std::test]
+    async fn mandelbrot_iteration_is_applied_correctly_outside_set() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(0.5, 0.6, 0.0).into());
         let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
@@ -348,13 +348,13 @@ mod tests {
         );
 
         verify_that!(
-            harness.fetch_result(&gpu.device),
+            harness.fetch_result(&gpu.device).await,
             matches_pattern!(MappableVector(elements_are![gt(0.0), eq(0.0), eq(0.0)]))
         )
     }
 
-    #[test]
-    fn eval_poly_evaluates_correctly_at_root() -> Result<()> {
+    #[async_std::test]
+    async fn eval_poly_evaluates_correctly_at_root() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(-0.5, 3.0f32.sqrt() / 2.0, 0.0).into());
         let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
@@ -381,7 +381,7 @@ mod tests {
         );
 
         verify_that!(
-            harness.fetch_result(&gpu.device),
+            harness.fetch_result(&gpu.device).await,
             matches_pattern!(MappableVector(elements_are![
                 approx_eq(0.0),
                 approx_eq(0.0),
@@ -390,8 +390,8 @@ mod tests {
         )
     }
 
-    #[test]
-    fn eval_poly_on_derivative_evaluates_correctly() -> Result<()> {
+    #[async_std::test]
+    async fn eval_poly_on_derivative_evaluates_correctly() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(2.0, 0.0, 0.0).into());
         let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
@@ -418,7 +418,7 @@ mod tests {
         );
 
         verify_that!(
-            harness.fetch_result(&gpu.device),
+            harness.fetch_result(&gpu.device).await,
             matches_pattern!(MappableVector(elements_are![
                 approx_eq(12.0),
                 approx_eq(0.0),
@@ -427,8 +427,8 @@ mod tests {
         )
     }
 
-    #[test]
-    fn inv_calculates_correct_inverse() -> Result<()> {
+    #[async_std::test]
+    async fn inv_calculates_correct_inverse() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(-2.0, 1.5, 0.0).into());
         let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
@@ -454,7 +454,7 @@ mod tests {
             "run_inv",
         );
 
-        let inv = harness.fetch_result(&gpu.device);
+        let inv = harness.fetch_result(&gpu.device).await;
         let inv_times_input = (
             inv.0[0] * input.0[0] - inv.0[1] * input.0[1],
             inv.0[0] * input.0[1] + inv.0[1] * input.0[0],
@@ -462,8 +462,8 @@ mod tests {
         verify_that!(inv_times_input, tuple!(approx_eq(1.0), approx_eq(0.0)))
     }
 
-    #[test]
-    fn newton_converges_to_root() -> Result<()> {
+    #[async_std::test]
+    async fn newton_converges_to_root() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(-2.0, 5.0, 0.0).into());
         let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
@@ -490,7 +490,7 @@ mod tests {
         );
 
         verify_that!(
-            harness.fetch_result(&gpu.device),
+            harness.fetch_result(&gpu.device).await,
             matches_pattern!(MappableVector(elements_are![
                 approx_eq(-0.5),
                 approx_eq(3.0f32.sqrt() / 2.0),
