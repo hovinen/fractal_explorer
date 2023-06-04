@@ -18,12 +18,14 @@ pub(super) struct View {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
+    #[cfg(test)]
+    bind_group_layout: wgpu::BindGroupLayout,
     uniform_buffer: wgpu::Buffer,
     view_transform: Matrix3<f32>,
 }
 
 impl View {
-    pub(super) fn new(gpu: &Gpu, extra_bind_group_layouts: &[&wgpu::BindGroupLayout]) -> Self {
+    pub(super) fn new(gpu: &Gpu) -> Self {
         let vertex_buffer = gpu
             .device
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -52,14 +54,12 @@ impl View {
                     label: Some("Bind group layout"),
                     entries: &[Uniform::layout_entry()],
                 });
-        let mut bind_group_layouts = vec![&bind_group_layout];
-        bind_group_layouts.extend(extra_bind_group_layouts);
         let pipeline_layout = gpu
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
                 push_constant_ranges: &[],
-                bind_group_layouts: bind_group_layouts.as_slice(),
+                bind_group_layouts: &[&bind_group_layout],
             });
         let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Bind group"),
@@ -92,6 +92,8 @@ impl View {
             uniform_buffer,
             view_transform,
             bind_group,
+            #[cfg(test)]
+            bind_group_layout,
         }
     }
 
@@ -258,8 +260,12 @@ mod tests {
     async fn transform_is_transferred_correctly() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(1.0, 2.0, 1.0).into());
-        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
-        let view = create_view(&gpu, &harness);
+        let view = create_view(&gpu);
+        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input).with_bind_group(
+            0,
+            &view.bind_group,
+            &view.bind_group_layout,
+        );
         let test_shader = wgsl_shader_test!(
             "shader/frag.wgsl",
             "
@@ -274,12 +280,7 @@ mod tests {
             "
         );
 
-        harness.run_compute_shader(
-            &view.pipeline_layout,
-            &view.bind_group,
-            test_shader,
-            "apply_uniform",
-        );
+        harness.run_compute_shader(test_shader, "apply_uniform");
 
         verify_that!(
             harness.fetch_result(&gpu.device).await,
@@ -291,8 +292,12 @@ mod tests {
     async fn mandelbrot_iteration_is_applied_correctly_inside_set() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(-0.5, 0.5, 0.0).into());
-        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
-        let view = create_view(&gpu, &harness);
+        let view = create_view(&gpu);
+        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input).with_bind_group(
+            0,
+            &view.bind_group,
+            &view.bind_group_layout,
+        );
         let test_shader = wgsl_shader_test!(
             "shader/frag.wgsl",
             "
@@ -307,12 +312,7 @@ mod tests {
             "
         );
 
-        harness.run_compute_shader(
-            &view.pipeline_layout,
-            &view.bind_group,
-            test_shader,
-            "run_mandelbrot_iteration",
-        );
+        harness.run_compute_shader(test_shader, "run_mandelbrot_iteration");
 
         verify_that!(
             harness.fetch_result(&gpu.device).await,
@@ -324,8 +324,12 @@ mod tests {
     async fn mandelbrot_iteration_is_applied_correctly_outside_set() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(0.5, 0.6, 0.0).into());
-        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
-        let view = create_view(&gpu, &harness);
+        let view = create_view(&gpu);
+        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input).with_bind_group(
+            0,
+            &view.bind_group,
+            &view.bind_group_layout,
+        );
         let test_shader = wgsl_shader_test!(
             "shader/frag.wgsl",
             "
@@ -340,12 +344,7 @@ mod tests {
             "
         );
 
-        harness.run_compute_shader(
-            &view.pipeline_layout,
-            &view.bind_group,
-            test_shader,
-            "run_mandelbrot_iteration",
-        );
+        harness.run_compute_shader(test_shader, "run_mandelbrot_iteration");
 
         verify_that!(
             harness.fetch_result(&gpu.device).await,
@@ -357,8 +356,12 @@ mod tests {
     async fn eval_poly_evaluates_correctly_at_root() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(-0.5, 3.0f32.sqrt() / 2.0, 0.0).into());
-        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
-        let view = create_view(&gpu, &harness);
+        let view = create_view(&gpu);
+        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input).with_bind_group(
+            0,
+            &view.bind_group,
+            &view.bind_group_layout,
+        );
         let test_shader = wgsl_shader_test!(
             "shader/frag.wgsl",
             "
@@ -373,12 +376,7 @@ mod tests {
             "
         );
 
-        harness.run_compute_shader(
-            &view.pipeline_layout,
-            &view.bind_group,
-            test_shader,
-            "run_eval_poly",
-        );
+        harness.run_compute_shader(test_shader, "run_eval_poly");
 
         verify_that!(
             harness.fetch_result(&gpu.device).await,
@@ -394,8 +392,12 @@ mod tests {
     async fn eval_poly_on_derivative_evaluates_correctly() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(2.0, 0.0, 0.0).into());
-        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
-        let view = create_view(&gpu, &harness);
+        let view = create_view(&gpu);
+        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input).with_bind_group(
+            0,
+            &view.bind_group,
+            &view.bind_group_layout,
+        );
         let test_shader = wgsl_shader_test!(
             "shader/frag.wgsl",
             "
@@ -410,12 +412,7 @@ mod tests {
             "
         );
 
-        harness.run_compute_shader(
-            &view.pipeline_layout,
-            &view.bind_group,
-            test_shader,
-            "run_eval_poly_df",
-        );
+        harness.run_compute_shader(test_shader, "run_eval_poly_df");
 
         verify_that!(
             harness.fetch_result(&gpu.device).await,
@@ -431,8 +428,12 @@ mod tests {
     async fn inv_calculates_correct_inverse() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(-2.0, 1.5, 0.0).into());
-        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
-        let view = create_view(&gpu, &harness);
+        let view = create_view(&gpu);
+        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input).with_bind_group(
+            0,
+            &view.bind_group,
+            &view.bind_group_layout,
+        );
         let test_shader = wgsl_shader_test!(
             "shader/frag.wgsl",
             "
@@ -447,12 +448,7 @@ mod tests {
             "
         );
 
-        harness.run_compute_shader(
-            &view.pipeline_layout,
-            &view.bind_group,
-            test_shader,
-            "run_inv",
-        );
+        harness.run_compute_shader(test_shader, "run_inv");
 
         let inv = harness.fetch_result(&gpu.device).await;
         let inv_times_input = (
@@ -466,8 +462,12 @@ mod tests {
     async fn newton_converges_to_root() -> Result<()> {
         let gpu = Gpu::new_without_surface();
         let input = MappableVector(Vector3::new(-2.0, 5.0, 0.0).into());
-        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input);
-        let view = create_view(&gpu, &harness);
+        let view = create_view(&gpu);
+        let harness = GpuTestHarness::new(&gpu.device, &gpu.queue, &input).with_bind_group(
+            0,
+            &view.bind_group,
+            &view.bind_group_layout,
+        );
         let test_shader = wgsl_shader_test!(
             "shader/frag.wgsl",
             "
@@ -482,12 +482,7 @@ mod tests {
             "
         );
 
-        harness.run_compute_shader(
-            &view.pipeline_layout,
-            &view.bind_group,
-            test_shader,
-            "run_newton",
-        );
+        harness.run_compute_shader(test_shader, "run_newton");
 
         verify_that!(
             harness.fetch_result(&gpu.device).await,
@@ -499,8 +494,8 @@ mod tests {
         )
     }
 
-    fn create_view(gpu: &Gpu, harness: &GpuTestHarness<MappableVector>) -> View {
-        let view = View::new(&gpu, &[&harness.bind_group_layout]);
+    fn create_view(gpu: &Gpu) -> View {
+        let view = View::new(&gpu);
         view.update_transform(&gpu.queue);
         view
     }

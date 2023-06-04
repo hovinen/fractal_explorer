@@ -50,8 +50,9 @@ pub struct GpuTestHarness<'a, T: DescribableStruct + Pod> {
     queue: &'a wgpu::Queue,
     staging_buffer: wgpu::Buffer,
     storage_buffer: wgpu::Buffer,
-    pub bind_group_layout: wgpu::BindGroupLayout,
+    bind_group_layout: wgpu::BindGroupLayout,
     bind_group: wgpu::BindGroup,
+    other_bind_groups: Vec<(u32, &'a wgpu::BindGroup, &'a wgpu::BindGroupLayout)>,
     phantom: PhantomData<T>,
 }
 
@@ -84,18 +85,41 @@ impl<'a, T: DescribableStruct + Pod> GpuTestHarness<'a, T> {
             storage_buffer,
             bind_group_layout,
             bind_group,
+            other_bind_groups: Default::default(),
             phantom: Default::default(),
         }
     }
 
+    pub fn with_bind_group(
+        mut self,
+        index: u32,
+        bind_group: &'a wgpu::BindGroup,
+        bind_group_layout: &'a wgpu::BindGroupLayout,
+    ) -> Self {
+        self.other_bind_groups
+            .push((index, bind_group, bind_group_layout));
+        self
+    }
+
     pub fn run_compute_shader(
         &self,
-        pipeline_layout: &wgpu::PipelineLayout,
-        bind_group: &wgpu::BindGroup,
         shader_test_descriptor: wgpu::ShaderModuleDescriptor,
         entry_point: &'static str,
     ) {
         let module = self.device.create_shader_module(shader_test_descriptor);
+        let mut bind_group_layouts: Vec<_> = self
+            .other_bind_groups
+            .iter()
+            .map(|(_, _, layout)| *layout)
+            .collect();
+        bind_group_layouts.push(&self.bind_group_layout);
+        let pipeline_layout = self
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                push_constant_ranges: &[],
+                bind_group_layouts: bind_group_layouts.as_slice(),
+            });
         let pipeline = self
             .device
             .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
@@ -108,7 +132,9 @@ impl<'a, T: DescribableStruct + Pod> GpuTestHarness<'a, T> {
         let mut encoder = self.device.create_command_encoder(&Default::default());
         {
             let mut compute_pass = encoder.begin_compute_pass(&Default::default());
-            compute_pass.set_bind_group(0, &bind_group, &[]);
+            for (index, bind_group, _) in &self.other_bind_groups {
+                compute_pass.set_bind_group(*index, bind_group, &[]);
+            }
             compute_pass.set_bind_group(1, &self.bind_group, &[]);
             compute_pass.set_pipeline(&pipeline);
             compute_pass.dispatch_workgroups(1, 1, 1);
