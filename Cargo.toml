@@ -18,4 +18,4 @@ wgpu = "0.15.1"
 
 [dev-dependencies]
 futures-intrusive = "0.5.0"
-googletest = "0.8.1"
+googletest = "0.9.0"
