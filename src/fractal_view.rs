@@ -455,7 +455,7 @@ mod tests {
             inv.0[0] * input.0[0] - inv.0[1] * input.0[1],
             inv.0[0] * input.0[1] + inv.0[1] * input.0[0],
         );
-        verify_that!(inv_times_input, tuple!(approx_eq(1.0), approx_eq(0.0)))
+        verify_that!(inv_times_input, (approx_eq(1.0), approx_eq(0.0)))
     }
 
     #[async_std::test]
