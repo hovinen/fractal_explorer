@@ -1,4 +1,5 @@
 use iced::futures;
+use iced_wgpu::wgpu;
 use iced_winit::winit;
 
 pub struct Gpu {

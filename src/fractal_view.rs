@@ -247,13 +247,15 @@ impl From<Matrix3<f32>> for Uniform {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::View;
     use crate::{
         gpu::Gpu,
         wgpu_test::{DescribableStruct, GpuTestHarness},
         wgsl_shader_test,
     };
+    use bytemuck::{Pod, Zeroable};
     use cgmath::Vector3;
+    use googletest::matchers::elements_are_matcher::internal::ElementsAre;
     use googletest::prelude::*;
 
     #[async_std::test]
@@ -348,7 +350,17 @@ mod tests {
 
         verify_that!(
             harness.fetch_result(&gpu.device).await,
-            matches_pattern!(MappableVector(elements_are![gt(0.0), eq(0.0), eq(0.0)]))
+            // TODO: Using the elements_are! macro directly causes the Rust
+            // compiler to be utterly confused with type inference, inferring
+            // the cnotainer type to be an infinitely recursive type coming from
+            // the palette crate for some reason. So we have to use the actual
+            // struct and add an explicit type argument. Figure out why this is
+            // happening and solve the root cause, if possible.
+            matches_pattern!(MappableVector(ElementsAre::<[f32; 3], _>::new(vec![
+                Box::new(gt(0.0)),
+                Box::new(eq(0.0)),
+                Box::new(eq(0.0)),
+            ])))
         )
     }
 
@@ -380,11 +392,11 @@ mod tests {
 
         verify_that!(
             harness.fetch_result(&gpu.device).await,
-            matches_pattern!(MappableVector(elements_are![
-                approx_eq(0.0),
-                approx_eq(0.0),
-                eq(0.0)
-            ]))
+            matches_pattern!(MappableVector(ElementsAre::<[f32; 3], _>::new(vec![
+                Box::new(approx_eq(0.0)),
+                Box::new(approx_eq(0.0)),
+                Box::new(eq(0.0)),
+            ])))
         )
     }
 
@@ -416,11 +428,11 @@ mod tests {
 
         verify_that!(
             harness.fetch_result(&gpu.device).await,
-            matches_pattern!(MappableVector(elements_are![
-                approx_eq(12.0),
-                approx_eq(0.0),
-                eq(0.0)
-            ]))
+            matches_pattern!(MappableVector(ElementsAre::<[f32; 3], _>::new(vec![
+                Box::new(approx_eq(12.0)),
+                Box::new(approx_eq(0.0)),
+                Box::new(eq(0.0)),
+            ])))
         )
     }
 
@@ -486,11 +498,11 @@ mod tests {
 
         verify_that!(
             harness.fetch_result(&gpu.device).await,
-            matches_pattern!(MappableVector(elements_are![
-                approx_eq(-0.5),
-                approx_eq(3.0f32.sqrt() / 2.0),
-                eq(0.0)
-            ]))
+            matches_pattern!(MappableVector(ElementsAre::<[f32; 3], _>::new(vec![
+                Box::new(approx_eq(-0.5)),
+                Box::new(approx_eq(3.0f32.sqrt() / 2.0)),
+                Box::new(eq(0.0)),
+            ])))
         )
     }
 

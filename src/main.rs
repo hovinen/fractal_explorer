@@ -10,11 +10,14 @@ use controls::{CanvasMessage, Controls, Message};
 use fractal_view::View;
 use gpu::Gpu;
 use iced::Color;
-use iced_wgpu::{wgpu, Backend, Renderer, Settings, Viewport};
+use iced_core::mouse::Cursor;
+use iced_wgpu::{graphics::Viewport, wgpu, Backend, Renderer, Settings};
 use iced_winit::{
-    conversion, program, renderer,
+    conversion,
+    core::{renderer, Size},
+    runtime::{program, Debug},
     winit::{self},
-    Clipboard, Debug, Size,
+    Clipboard,
 };
 use winit::{
     dpi::PhysicalPosition,
@@ -58,14 +61,20 @@ pub fn main() {
 
     // Initialize iced
     let mut debug = Debug::new();
-    let mut renderer = Renderer::new(Backend::new(
+    let renderer = Renderer::new(Backend::new(
         &gpu.device,
+        &gpu.queue,
         Settings::default(),
         gpu.texture_format,
     ));
+    let mut widget_renderer = iced_widget::renderer::Renderer::Wgpu(renderer);
 
-    let mut state =
-        program::State::new(controls, viewport.logical_size(), &mut renderer, &mut debug);
+    let mut state = program::State::new(
+        controls,
+        viewport.logical_size(),
+        &mut widget_renderer,
+        &mut debug,
+    );
 
     // Run event loop
     event_loop.run(move |event, _, control_flow| {
@@ -103,9 +112,12 @@ pub fn main() {
                     // We update iced
                     let _ = state.update(
                         viewport.logical_size(),
-                        conversion::cursor_position(cursor_position, viewport.scale_factor()),
-                        &mut renderer,
-                        &iced_wgpu::Theme::Dark,
+                        Cursor::Available(conversion::cursor_position(
+                            cursor_position,
+                            viewport.scale_factor(),
+                        )),
+                        &mut widget_renderer,
+                        &iced_winit::style::Theme::Dark,
                         &renderer::Style {
                             text_color: Color::WHITE,
                         },
@@ -184,11 +196,13 @@ pub fn main() {
                         fractal_view.render(&view, &mut encoder);
 
                         // And then iced on top
+                        let iced_widget::renderer::Renderer::Wgpu(renderer) = &mut widget_renderer else { panic!("Not the right kind of renderer!") };
                         renderer.with_primitives(|backend, primitive| {
                             backend.present(
                                 &gpu.device,
-                                &mut staging_belt,
+                                &gpu.queue,
                                 &mut encoder,
+                                None,
                                 &view,
                                 primitive,
                                 &viewport,

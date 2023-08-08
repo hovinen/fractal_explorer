@@ -1,15 +1,14 @@
 use cgmath::{Matrix3, Vector2, Vector3};
 use iced::{
-    mouse::{self, Button, ScrollDelta},
+    mouse::{self, Button, Cursor, ScrollDelta},
     widget::{pick_list, Row},
-    Color, Element, Length, Point, Rectangle,
+    Color, Length, Point, Rectangle,
 };
-use iced_graphics::widget::{
-    canvas::{self, event::Status, Cursor, Event, Frame, Geometry, Text},
+use iced_widget::{
+    canvas::{self, event::Status, Event, Frame, Geometry, Text},
     Canvas,
 };
-use iced_native::Theme;
-use iced_winit::Program;
+use iced_winit::{core::Element, runtime::Program, style::Theme};
 use std::{cell::Cell, fmt::Display};
 
 pub(super) struct Controls {
@@ -58,7 +57,7 @@ impl Controls {
 }
 
 impl Program for Controls {
-    type Renderer = iced_wgpu::Renderer;
+    type Renderer = iced_widget::renderer::Renderer<Theme>;
     type Message = Message;
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
@@ -75,7 +74,7 @@ impl Program for Controls {
         iced::Command::none()
     }
 
-    fn view(&self) -> iced_winit::Element<'_, Self::Message, Self::Renderer> {
+    fn view(&self) -> Element<'_, Self::Message, Self::Renderer> {
         Row::new()
             .push(self.canvas.view().map(Message::Canvas))
             .push(pick_list(
@@ -120,7 +119,7 @@ impl FractalCanvas {
         }
     }
 
-    fn view(&self) -> Element<CanvasMessage> {
+    fn view(&self) -> Element<CanvasMessage, iced_widget::renderer::Renderer<Theme>> {
         Canvas::new(self)
             .width(Length::Fill)
             .height(Length::Fill)
@@ -128,12 +127,13 @@ impl FractalCanvas {
     }
 }
 
-impl canvas::Program<CanvasMessage> for FractalCanvas {
+impl canvas::Program<CanvasMessage, iced_widget::renderer::Renderer<Theme>> for FractalCanvas {
     type State = State;
 
     fn draw(
         &self,
         _state: &Self::State,
+        renderer: &iced_widget::renderer::Renderer<Theme>,
         _theme: &Theme,
         bounds: Rectangle,
         cursor: Cursor,
@@ -151,7 +151,7 @@ impl canvas::Program<CanvasMessage> for FractalCanvas {
             )
             .into();
             position_text.color = Color::WHITE;
-            let mut frame = Frame::new(bounds.size());
+            let mut frame = Frame::new(renderer, bounds.size());
             frame.fill_text(position_text);
             vec![frame.into_geometry()]
         } else {
