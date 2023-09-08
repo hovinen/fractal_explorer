@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install ${{ matrix.toolchain }}
-        uses: dtolnay/rust-toolchain@7a26acb92768ab3675ddfe846a5b2f438c85f215
+        uses: dtolnay/rust-toolchain@5cb429dd810e16ff67df78472fa81cf760f4d1c0
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy
@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install ${{ matrix.toolchain }}
-        uses: dtolnay/rust-toolchain@7a26acb92768ab3675ddfe846a5b2f438c85f215
+        uses: dtolnay/rust-toolchain@5cb429dd810e16ff67df78472fa81cf760f4d1c0
         with:
           toolchain: ${{ matrix.toolchain }}
       - name: install swiftshader
