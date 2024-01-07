@@ -98,15 +98,16 @@ impl Gpu {
                     )
                     .await
                     .expect("Request device"),
-                surface
-                    .map(|s| {
-                        s.get_capabilities(&adapter)
-                            .formats
-                            .first()
-                            .copied()
-                            .expect("Get preferred format")
-                    })
-                    .unwrap_or(wgpu::TextureFormat::Rgba8Unorm),
+                if let Some(surface) = surface {
+                    surface
+                        .get_capabilities(&adapter)
+                        .formats
+                        .first()
+                        .copied()
+                        .expect("Get preferred format")
+                } else {
+                    wgpu::TextureFormat::Rgba8Unorm
+                },
             )
         });
         (device, queue, texture_format)
