@@ -255,7 +255,7 @@ mod tests {
     };
     use bytemuck::{Pod, Zeroable};
     use cgmath::Vector3;
-    use googletest::matchers::elements_are_matcher::internal::ElementsAre;
+    use googletest::matchers::__internal_unstable_do_not_depend_on_these::ElementsAre;
     use googletest::prelude::*;
 
     #[async_std::test]
@@ -352,7 +352,7 @@ mod tests {
             harness.fetch_result(&gpu.device).await,
             // TODO: Using the elements_are! macro directly causes the Rust
             // compiler to be utterly confused with type inference, inferring
-            // the cnotainer type to be an infinitely recursive type coming from
+            // the container type to be an infinitely recursive type coming from
             // the palette crate for some reason. So we have to use the actual
             // struct and add an explicit type argument. Figure out why this is
             // happening and solve the root cause, if possible.
