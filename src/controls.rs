@@ -17,7 +17,7 @@ pub(super) struct Controls {
     last_message: Cell<Option<Message>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) enum Message {
     Canvas(CanvasMessage),
     FractalTypeSelected(FractalType),
@@ -57,8 +57,9 @@ impl Controls {
 }
 
 impl Program for Controls {
-    type Renderer = iced_widget::renderer::Renderer<Theme>;
+    type Renderer = iced_widget::renderer::Renderer;
     type Message = Message;
+    type Theme = Theme;
 
     fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
         match message {
@@ -74,7 +75,7 @@ impl Program for Controls {
         iced::Command::none()
     }
 
-    fn view(&self) -> Element<'_, Self::Message, Self::Renderer> {
+    fn view(&self) -> Element<'_, Self::Message, Self::Theme, Self::Renderer> {
         Row::new()
             .push(self.canvas.view().map(Message::Canvas))
             .push(pick_list(
@@ -90,7 +91,7 @@ struct FractalCanvas {
     view_transform: Matrix3<f32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) enum CanvasMessage {
     Pan(f32, f32),
     Zoom(f32, Point),
@@ -119,7 +120,7 @@ impl FractalCanvas {
         }
     }
 
-    fn view(&self) -> Element<CanvasMessage, iced_widget::renderer::Renderer<Theme>> {
+    fn view(&self) -> Element<CanvasMessage, Theme, iced_widget::renderer::Renderer> {
         Canvas::new(self)
             .width(Length::Fill)
             .height(Length::Fill)
@@ -127,13 +128,13 @@ impl FractalCanvas {
     }
 }
 
-impl canvas::Program<CanvasMessage, iced_widget::renderer::Renderer<Theme>> for FractalCanvas {
+impl canvas::Program<CanvasMessage, Theme, iced_widget::renderer::Renderer> for FractalCanvas {
     type State = State;
 
     fn draw(
         &self,
         _state: &Self::State,
-        renderer: &iced_widget::renderer::Renderer<Theme>,
+        renderer: &iced_widget::renderer::Renderer,
         _theme: &Theme,
         bounds: Rectangle,
         cursor: Cursor,

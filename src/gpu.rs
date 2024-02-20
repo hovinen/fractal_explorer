@@ -9,15 +9,14 @@ pub struct Gpu {
 }
 
 impl Gpu {
-    pub fn new(window: &winit::window::Window) -> (Self, wgpu::Surface) {
+    pub fn new<'window>(window: &'window winit::window::Window) -> (Self, wgpu::Surface<'window>) {
         let backend = Self::get_backend();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: backend,
             ..Default::default()
         });
-        let surface = unsafe { instance.create_surface(&window).unwrap() };
-        let (device, queue, texture_format) =
-            Self::create_device(&instance, Some(&surface), backend);
+        let surface = instance.create_surface(window).unwrap();
+        let (device, queue, texture_format) = Self::create_device(&instance, Some(&surface));
         let gpu = Self {
             texture_format,
             device,
@@ -35,7 +34,7 @@ impl Gpu {
             backends: backend,
             ..Default::default()
         });
-        let (device, queue, texture_format) = Self::create_device(&instance, None, backend);
+        let (device, queue, texture_format) = Self::create_device(&instance, None);
         Self {
             texture_format,
             device,
@@ -54,6 +53,7 @@ impl Gpu {
                 present_mode: wgpu::PresentMode::AutoVsync,
                 alpha_mode: wgpu::CompositeAlphaMode::Auto,
                 view_formats: vec![],
+                desired_maximum_frame_latency: 2,
             },
         );
     }
@@ -70,13 +70,11 @@ impl Gpu {
     fn create_device(
         instance: &wgpu::Instance,
         surface: Option<&wgpu::Surface>,
-        backends: wgpu::Backends,
     ) -> (wgpu::Device, wgpu::Queue, wgpu::TextureFormat) {
         let ((device, queue), texture_format) = futures::executor::block_on(async {
-            let adapter =
-                wgpu::util::initialize_adapter_from_env_or_default(instance, backends, surface)
-                    .await
-                    .expect("No suitable GPU adapters found on the system!");
+            let adapter = wgpu::util::initialize_adapter_from_env_or_default(instance, surface)
+                .await
+                .expect("No suitable GPU adapters found on the system!");
 
             let adapter_features = adapter.features();
 
@@ -91,8 +89,8 @@ impl Gpu {
                     .request_device(
                         &wgpu::DeviceDescriptor {
                             label: None,
-                            features: adapter_features & wgpu::Features::default(),
-                            limits: needed_limits,
+                            required_features: adapter_features & wgpu::Features::default(),
+                            required_limits: needed_limits,
                         },
                         None,
                     )
