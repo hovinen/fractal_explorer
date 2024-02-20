@@ -103,76 +103,18 @@ pub fn main() {
                             event_loop_window.exit();
                         }
                         WindowEvent::RedrawRequested => {
-                            if resized {
-                                let size = window.inner_size();
-        
-                                viewport = Viewport::with_physical_size(
-                                    Size::new(size.width, size.height),
-                                    window.scale_factor(),
-                                );
-        
-                                gpu.configure_surface(&surface, size);
-        
-                                resized = false;
-                            }
-        
-                            match surface.get_current_texture() {
-                                Ok(frame) => {
-                                    fractal_view.update_transform(&gpu.queue);
-        
-                                    let mut encoder = gpu.device.create_command_encoder(
-                                        &wgpu::CommandEncoderDescriptor { label: None },
-                                    );
-        
-                                    let view = frame
-                                        .texture
-                                        .create_view(&wgpu::TextureViewDescriptor::default());
-        
-                                    fractal_view.render(&view, &mut encoder);
-        
-                                    // And then iced on top
-                                    let iced_widget::renderer::Renderer::Wgpu(renderer) =
-                                        &mut widget_renderer
-                                    else {
-                                        panic!("Not the right kind of renderer!")
-                                    };
-                                    renderer.with_primitives(|backend, primitive| {
-                                        backend.present(
-                                            &gpu.device,
-                                            &gpu.queue,
-                                            &mut encoder,
-                                            None,
-                                            gpu.texture_format,
-                                            &view,
-                                            primitive,
-                                            &viewport,
-                                            &debug.overlay(),
-                                        );
-                                    });
-        
-                                    // Then we submit the work
-                                    staging_belt.finish();
-                                    gpu.queue.submit(Some(encoder.finish()));
-                                    frame.present();
-        
-                                    // Update the mouse cursor
-                                    window.set_cursor_icon(iced_winit::conversion::mouse_interaction(
-                                        state.mouse_interaction(),
-                                    ));
-        
-                                    // And recall staging buffers
-                                    staging_belt.recall();
-                                }
-                                Err(error) => match error {
-                                    wgpu::SurfaceError::OutOfMemory => {
-                                        panic!("Swapchain error: {error}. Rendering cannot continue.")
-                                    }
-                                    _ => {
-                                        // Try rendering again next frame.
-                                        window.request_redraw();
-                                    }
-                                },
-                            }
+                            redraw(
+                                &window,
+                                &surface,
+                                &gpu,
+                                &mut fractal_view,
+                                &mut widget_renderer,
+                                &mut state,
+                                &mut viewport,
+                                &mut staging_belt,
+                                &mut debug,
+                                &mut resized,
+                            );
                         }
                         _ => {}
                     }
@@ -250,6 +192,86 @@ pub fn main() {
             }
         })
         .unwrap();
+}
+
+fn redraw(
+    window: &winit::window::Window,
+    surface: &wgpu::Surface,
+    gpu: &Gpu,
+    fractal_view: &mut View,
+    widget_renderer: &mut iced_widget::renderer::Renderer,
+    state: &mut program::State<Controls>,
+    viewport: &mut Viewport,
+    staging_belt: &mut wgpu::util::StagingBelt,
+    debug: &mut Debug,
+    resized: &mut bool,
+) {
+    if *resized {
+        let size = window.inner_size();
+
+        *viewport =
+            Viewport::with_physical_size(Size::new(size.width, size.height), window.scale_factor());
+
+        gpu.configure_surface(&surface, size);
+
+        *resized = false;
+    }
+
+    match surface.get_current_texture() {
+        Ok(frame) => {
+            fractal_view.update_transform(&gpu.queue);
+
+            let mut encoder = gpu
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+            let view = frame
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
+
+            fractal_view.render(&view, &mut encoder);
+
+            // And then iced on top
+            let iced_widget::renderer::Renderer::Wgpu(renderer) = widget_renderer else {
+                panic!("Not the right kind of renderer!")
+            };
+            renderer.with_primitives(|backend, primitive| {
+                backend.present(
+                    &gpu.device,
+                    &gpu.queue,
+                    &mut encoder,
+                    None,
+                    gpu.texture_format,
+                    &view,
+                    primitive,
+                    &viewport,
+                    &debug.overlay(),
+                );
+            });
+
+            // Then we submit the work
+            staging_belt.finish();
+            gpu.queue.submit(Some(encoder.finish()));
+            frame.present();
+
+            // Update the mouse cursor
+            window.set_cursor_icon(iced_winit::conversion::mouse_interaction(
+                state.mouse_interaction(),
+            ));
+
+            // And recall staging buffers
+            staging_belt.recall();
+        }
+        Err(error) => match error {
+            wgpu::SurfaceError::OutOfMemory => {
+                panic!("Swapchain error: {error}. Rendering cannot continue.")
+            }
+            _ => {
+                // Try rendering again next frame.
+                window.request_redraw();
+            }
+        },
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
