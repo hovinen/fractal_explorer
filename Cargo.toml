@@ -15,7 +15,7 @@ iced_runtime = "0.12.0"
 iced_wgpu = "0.12.0"
 iced_winit = "0.12.0"
 iced_widget = { version = "0.12.0", features = ["canvas"] }
-wgpu = "0.19.1"
+wgpu = "0.20.0"
 futures = "0.3.28"
 
 [dev-dependencies]
