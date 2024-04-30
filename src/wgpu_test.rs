@@ -1,13 +1,13 @@
 use bytemuck::Pod;
+use iced_wgpu::wgpu::{self, util::DeviceExt};
 use std::{marker::PhantomData, num::NonZeroU64};
-use wgpu::util::DeviceExt;
 
 #[macro_export]
 macro_rules! wgsl_shader_test {
     ($shader_file:expr, $($shader_content:tt)*) => {
-        wgpu::ShaderModuleDescriptor {
+        iced_wgpu::wgpu::ShaderModuleDescriptor {
             label: Some(concat!($shader_file, " (test)")),
-            source: wgpu::ShaderSource::Wgsl(concat!(
+            source: iced_wgpu::wgpu::ShaderSource::Wgsl(concat!(
                 include_str!($shader_file),
                 $($shader_content)*
             ).into()),
