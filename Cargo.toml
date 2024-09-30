@@ -12,7 +12,7 @@ iced = "0.12.0"
 iced_core = "0.12.0"
 iced_graphics = "0.12.0"
 iced_runtime = "0.12.0"
-iced_wgpu = "0.12.0"
+iced_wgpu = "0.13.5"
 iced_winit = "0.12.0"
 iced_widget = { version = "0.12.0", features = ["canvas"] }
 futures = "0.3.28"
